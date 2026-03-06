@@ -1,0 +1,141 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String            @id @default(cuid())
+  email        String            @unique
+  passwordHash String
+  name         String?
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+  statements   StatementUpload[]
+  rules        ClassificationRule[]
+}
+
+model StatementUpload {
+  id                   String        @id @default(cuid())
+  userId               String
+  user                 User          @relation(fields: [userId], references: [id])
+  fileName             String
+  filePath             String
+  uploadedAt           DateTime      @default(now())
+  parseStatus          ParseStatus   @default(PENDING)
+  bankName             String?
+  statementPeriodStart DateTime?
+  statementPeriodEnd   DateTime?
+  errorMessage         String?
+  transactions         Transaction[]
+  parseLogs            ParseLog[]
+
+  @@index([userId])
+}
+
+enum ParseStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  PARTIAL
+}
+
+model Transaction {
+  id                    String          @id @default(cuid())
+  statementId           String
+  statement             StatementUpload @relation(fields: [statementId], references: [id])
+  txnDate               DateTime
+  description           String
+  normalizedDescription String
+  reference             String?
+  debitAmount           Decimal?        @db.Decimal(15, 2)
+  creditAmount          Decimal?        @db.Decimal(15, 2)
+  balance               Decimal?        @db.Decimal(15, 2)
+  amountSigned          Decimal         @db.Decimal(15, 2)
+  direction             Direction
+  categoryId            String?
+  category              Category?       @relation(fields: [categoryId], references: [id])
+  autoCategoryId        String?
+  isManualOverride      Boolean         @default(false)
+  classificationReason  ClassificationReason @default(FALLBACK_UNCATEGORIZED)
+  createdAt             DateTime        @default(now())
+  updatedAt             DateTime        @updatedAt
+
+  @@index([statementId])
+  @@index([categoryId])
+  @@index([txnDate])
+}
+
+enum Direction {
+  DEBIT
+  CREDIT
+}
+
+enum ClassificationReason {
+  EXACT_KEYWORD
+  REGEX_MATCH
+  MANUAL_OVERRIDE
+  FALLBACK_UNCATEGORIZED
+}
+
+model Category {
+  id           String        @id @default(cuid())
+  name         String        @unique
+  type         CategoryType
+  color        String?
+  icon         String?
+  transactions Transaction[]
+  rules        ClassificationRule[]
+}
+
+enum CategoryType {
+  EXPENSE
+  INCOME
+  NEUTRAL
+}
+
+model ClassificationRule {
+  id          String      @id @default(cuid())
+  userId      String?
+  user        User?       @relation(fields: [userId], references: [id])
+  pattern     String
+  patternType PatternType
+  categoryId  String
+  category    Category    @relation(fields: [categoryId], references: [id])
+  priority    Int         @default(0)
+  isActive    Boolean     @default(true)
+  isSystem    Boolean     @default(false)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  @@index([categoryId])
+  @@index([priority])
+}
+
+enum PatternType {
+  KEYWORD
+  REGEX
+}
+
+model ParseLog {
+  id          String          @id @default(cuid())
+  statementId String
+  statement   StatementUpload @relation(fields: [statementId], references: [id])
+  level       LogLevel
+  message     String
+  rawLine     String?
+  createdAt   DateTime        @default(now())
+
+  @@index([statementId])
+}
+
+enum LogLevel {
+  INFO
+  WARN
+  ERROR
+  DEBUG
+}

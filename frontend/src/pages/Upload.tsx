@@ -12,9 +12,16 @@ export default function Upload() {
   const fileRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
 
+  const [pdfPassword, setPdfPassword] = useState('');
+  const [rawText, setRawText] = useState('');
+
   const upload = async (file: File) => {
-    if (file.type !== 'application/pdf') {
-      setError('Only PDF files are accepted.');
+    const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+    const isTxt = file.type === 'text/plain' || file.name.toLowerCase().endsWith('.txt');
+    const isCsv = file.type === 'text/csv' || file.name.toLowerCase().endsWith('.csv');
+    const isXlsx = file.name.toLowerCase().endsWith('.xlsx') || file.name.toLowerCase().endsWith('.xls');
+    if (!isPdf && !isTxt && !isCsv && !isXlsx) {
+      setError('Only PDF, TXT, CSV or XLSX files are accepted.');
       setStatus('error');
       return;
     }
@@ -27,7 +34,7 @@ export default function Upload() {
     setStatus('uploading');
     setError('');
     try {
-      const result = await statementsApi.upload(file);
+      const result = await statementsApi.upload(file, isPdf ? pdfPassword || undefined : undefined);
       setUploadedId(result.id);
       setStatus('success');
     } catch (err: any) {
@@ -76,34 +83,83 @@ export default function Upload() {
           </div>
         </div>
       ) : (
-        <div
-          className={`border-2 border-dashed rounded-xl p-12 text-center cursor-pointer transition-colors ${
-            dragging ? 'border-indigo-400 bg-indigo-50' : 'border-gray-300 hover:border-indigo-400 hover:bg-gray-50'
-          }`}
-          onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
-          onDragLeave={() => setDragging(false)}
-          onDrop={handleDrop}
-          onClick={() => fileRef.current?.click()}
-        >
-          <input
-            ref={fileRef}
-            type="file"
-            accept="application/pdf"
-            className="hidden"
-            onChange={handleFileChange}
-          />
-          {status === 'uploading' ? (
-            <>
-              <div className="text-4xl mb-3 animate-pulse">⏳</div>
-              <p className="text-gray-600 font-medium">Uploading and processing...</p>
-              <p className="text-gray-400 text-sm mt-1">Please wait</p>
-            </>
-          ) : (
-            <>
-              <div className="text-4xl mb-3">📄</div>
-              <p className="text-gray-700 font-medium">Drop your PDF here or click to browse</p>
-              <p className="text-gray-400 text-sm mt-1">PDF files only, max 20 MB</p>
-            </>
+        <div className="space-y-4">
+          <div
+            className={`border-2 border-dashed rounded-xl p-12 text-center cursor-pointer transition-colors ${
+              dragging ? 'border-indigo-400 bg-indigo-50' : 'border-gray-300 hover:border-indigo-400 hover:bg-gray-50'
+            }`}
+            onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
+            onDragLeave={() => setDragging(false)}
+            onDrop={handleDrop}
+            onClick={() => fileRef.current?.click()}
+          >
+            <input
+              ref={fileRef}
+              type="file"
+              accept=".pdf,.txt,.csv,.xlsx,application/pdf,text/plain,text/csv"
+              className="hidden"
+              onChange={handleFileChange}
+            />
+            {status === 'uploading' ? (
+              <>
+                <div className="text-4xl mb-3 animate-pulse">⏳</div>
+                <p className="text-gray-600 font-medium">Uploading and processing...</p>
+                <p className="text-gray-400 text-sm mt-1">Please wait</p>
+              </>
+            ) : (
+              <>
+                <div className="text-4xl mb-3">📄</div>
+                <p className="text-gray-700 font-medium">Drop your PDF here or click to browse</p>
+                <p className="text-gray-400 text-sm mt-1">PDF files only, max 20 MB</p>
+              </>
+            )}
+          </div>
+
+          {!status.includes('uploading') && (
+            <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 space-y-3">
+              <label htmlFor="pdf-password" className="block text-sm font-medium text-gray-700 mb-2">
+                PDF Password (if required)
+              </label>
+              <input
+                id="pdf-password"
+                type="password"
+                value={pdfPassword}
+                onChange={(e) => setPdfPassword(e.target.value)}
+                placeholder="Leave blank if PDF is not password-protected"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                autoComplete="off"
+              />
+              <p className="text-xs text-gray-500 mt-1">Password will not be saved after upload</p>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Paste tabular text or CSV here</label>
+                <textarea
+                  rows={6}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  placeholder={`Date | Description | Amount | Category\n2026-04-10 | Uber Ride | -250 | Travel`}
+                  onChange={(e) => setRawText(e.target.value)}
+                />
+                <div className="flex gap-2 mt-2">
+                  <button
+                    onClick={async () => {
+                      if (!rawText.trim()) return;
+                      setStatus('uploading');
+                      try {
+                        const res = await statementsApi.importText(rawText);
+                        setUploadedId(res.id);
+                        setStatus('success');
+                      } catch (err: any) {
+                        setError(err.response?.data?.message || 'Import failed');
+                        setStatus('error');
+                      }
+                    }}
+                    className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors"
+                  >
+                    Import Text
+                  </button>
+                </div>
+              </div>
+            </div>
           )}
         </div>
       )}
@@ -125,6 +181,7 @@ export default function Upload() {
         <ul className="text-sm text-blue-700 space-y-1">
           <li>• HDFC Bank statements (text-based PDF)</li>
           <li>• SBI statements (text-based PDF)</li>
+          <li>• Plain text files with parsed transactions (.txt)</li>
           <li>• Generic format (best-effort parsing)</li>
         </ul>
         <p className="text-xs text-blue-600 mt-2">

@@ -31,12 +31,16 @@ export const authApi = {
 
 // Statements
 export const statementsApi = {
-  upload: (file: File) => {
+  upload: (file: File, pdfPassword?: string) => {
     const form = new FormData();
     form.append('file', file);
+    if (pdfPassword) form.append('pdfPassword', pdfPassword);
     return api.post('/statements/upload', form, {
       headers: { 'Content-Type': 'multipart/form-data' },
     }).then((r) => r.data);
+  },
+  importText: (text: string, rows?: any[], fileName?: string) => {
+    return api.post('/statements/import', { text, rows, fileName }).then((r) => r.data);
   },
   list: () => api.get('/statements').then((r) => r.data),
   get: (id: string) => api.get(`/statements/${id}`).then((r) => r.data),

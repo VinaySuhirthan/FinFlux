@@ -32,6 +32,16 @@ interface PaginatedResult {
   totalPages: number;
 }
 
+interface EditState {
+  [txnId: string]: {
+    editing: boolean;
+    description: string;
+    amount: string;
+    txnDate: string;
+    type: 'CR' | 'DR';
+  };
+}
+
 export default function Transactions() {
   const { id: statementId } = useParams<{ id: string }>();
   const [result, setResult] = useState<PaginatedResult | null>(null);
@@ -40,6 +50,7 @@ export default function Transactions() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [bulkCategory, setBulkCategory] = useState('');
   const [reprocessing, setReprocessing] = useState(false);
+  const [editState, setEditState] = useState<EditState>({});
 
   // Filters
   const [search, setSearch] = useState('');
@@ -125,6 +136,37 @@ export default function Transactions() {
     REGEX_MATCH: 'regex',
     MANUAL_OVERRIDE: 'manual',
     FALLBACK_UNCATEGORIZED: 'auto',
+  };
+
+  const startEdit = (txn: Transaction) => {
+    setEditState((prev) => ({
+      ...prev,
+      [txn.id]: {
+        editing: true,
+        description: txn.description,
+        amount: txn.debitAmount || txn.creditAmount || '',
+        txnDate: txn.txnDate.slice(0, 10),
+        type: txn.direction === 'CREDIT' ? 'CR' : 'DR',
+      },
+    }));
+  };
+
+  const cancelEdit = (txnId: string) => {
+    setEditState((prev) => ({ ...prev, [txnId]: { ...prev[txnId], editing: false } }));
+  };
+
+  const saveEdit = async (txn: Transaction) => {
+    const state = editState[txn.id];
+    await transactionsApi.update(txn.id, {
+      description: state.description,
+      amount: Number(state.amount),
+      txnDate: state.txnDate,
+      type: state.type,
+      // Set categoryId if present in txn
+      categoryId: txn.category?.id,
+    });
+    setEditState((prev) => ({ ...prev, [txn.id]: { ...prev[txn.id], editing: false } }));
+    load();
   };
 
   return (
@@ -221,54 +263,107 @@ export default function Transactions() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {result.transactions.map((txn) => (
-                  <tr key={txn.id} className={`hover:bg-gray-50 ${selected.has(txn.id) ? 'bg-indigo-50' : ''}`}>
-                    <td className="p-3">
-                      <input
-                        type="checkbox"
-                        checked={selected.has(txn.id)}
-                        onChange={() => toggleSelect(txn.id)}
-                        className="rounded"
-                      />
-                    </td>
-                    <td className="p-3 text-gray-600 whitespace-nowrap">
-                      {format(new Date(txn.txnDate), 'dd MMM yyyy')}
-                    </td>
-                    <td className="p-3 max-w-xs">
-                      <div className="truncate text-gray-900" title={txn.description}>
-                        {txn.description}
-                      </div>
-                      <div className="flex gap-1 mt-0.5">
-                        {txn.isManualOverride && (
-                          <span className="text-xs text-indigo-500 bg-indigo-50 px-1 rounded">manual</span>
-                        )}
-                        <span className="text-xs text-gray-400">
-                          {reasonLabel[txn.classificationReason] || ''}
-                        </span>
-                      </div>
-                    </td>
-                    <td className="p-3 text-right text-red-600 font-mono">
-                      {txn.debitAmount ? `₹${Number(txn.debitAmount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}` : ''}
-                    </td>
-                    <td className="p-3 text-right text-green-600 font-mono">
-                      {txn.creditAmount ? `₹${Number(txn.creditAmount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}` : ''}
-                    </td>
-                    <td className="p-3">
-                      <select
-                        value={txn.category?.id || ''}
-                        onChange={(e) => handleCategoryChange(txn.id, e.target.value)}
-                        className="border border-gray-200 rounded px-2 py-1 text-xs max-w-[160px] focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                      >
-                        <option value="">Uncategorized</option>
-                        {categories.map((c) => (
-                          <option key={c.id} value={c.id}>
-                            {c.icon} {c.name}
-                          </option>
-                        ))}
-                      </select>
-                    </td>
-                  </tr>
-                ))}
+                {result.transactions.map((txn) => {
+                  const edit = editState[txn.id];
+                  return edit && edit.editing ? (
+                    <tr key={txn.id} className={`hover:bg-gray-50 ${selected.has(txn.id) ? 'bg-indigo-50' : ''}`}>
+                      <td className="p-3">
+                        <input
+                          type="checkbox"
+                          checked={selected.has(txn.id)}
+                          onChange={() => toggleSelect(txn.id)}
+                          className="rounded"
+                        />
+                      </td>
+                      <td className="p-3 text-gray-600 whitespace-nowrap">
+                        <input
+                          type="date"
+                          value={edit.txnDate}
+                          onChange={e => setEditState(prev => ({ ...prev, [txn.id]: { ...prev[txn.id], txnDate: e.target.value } }))}
+                          className="border rounded px-2 py-1 text-xs"
+                        />
+                      </td>
+                      <td className="p-3 max-w-xs">
+                        <input
+                          type="text"
+                          value={edit.description}
+                          onChange={e => setEditState(prev => ({ ...prev, [txn.id]: { ...prev[txn.id], description: e.target.value } }))}
+                          className="border rounded px-2 py-1 text-xs w-full"
+                        />
+                      </td>
+                      <td className="p-3 text-right">
+                        <input
+                          type="number"
+                          value={edit.type === 'DR' ? edit.amount : ''}
+                          onChange={e => setEditState(prev => ({ ...prev, [txn.id]: { ...prev[txn.id], amount: e.target.value, type: 'DR' } }))}
+                          className="border rounded px-2 py-1 text-xs w-20 text-right"
+                          placeholder="Debit"
+                        />
+                      </td>
+                      <td className="p-3 text-right">
+                        <input
+                          type="number"
+                          value={edit.type === 'CR' ? edit.amount : ''}
+                          onChange={e => setEditState(prev => ({ ...prev, [txn.id]: { ...prev[txn.id], amount: e.target.value, type: 'CR' } }))}
+                          className="border rounded px-2 py-1 text-xs w-20 text-right"
+                          placeholder="Credit"
+                        />
+                      </td>
+                      <td className="p-3 flex gap-1">
+                        <button onClick={() => saveEdit(txn)} className="text-green-600 text-xs px-2 py-1 border rounded hover:bg-green-50">Save</button>
+                        <button onClick={() => cancelEdit(txn.id)} className="text-gray-500 text-xs px-2 py-1 border rounded hover:bg-gray-50">Cancel</button>
+                      </td>
+                    </tr>
+                  ) : (
+                    <tr key={txn.id} className={`hover:bg-gray-50 ${selected.has(txn.id) ? 'bg-indigo-50' : ''}`}>
+                      <td className="p-3">
+                        <input
+                          type="checkbox"
+                          checked={selected.has(txn.id)}
+                          onChange={() => toggleSelect(txn.id)}
+                          className="rounded"
+                        />
+                      </td>
+                      <td className="p-3 text-gray-600 whitespace-nowrap">
+                        {format(new Date(txn.txnDate), 'dd MMM yyyy')}
+                      </td>
+                      <td className="p-3 max-w-xs">
+                        <div className="truncate text-gray-900" title={txn.description}>
+                          {txn.description}
+                        </div>
+                        <div className="flex gap-1 mt-0.5">
+                          {txn.isManualOverride && (
+                            <span className="text-xs text-indigo-500 bg-indigo-50 px-1 rounded">manual</span>
+                          )}
+                          <span className="text-xs text-gray-400">
+                            {reasonLabel[txn.classificationReason] || ''}
+                          </span>
+                        </div>
+                        <button onClick={() => startEdit(txn)} className="text-xs text-blue-500 underline mt-1">Edit</button>
+                      </td>
+                      <td className="p-3 text-right text-red-600 font-mono">
+                        {txn.debitAmount ? `₹${Number(txn.debitAmount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}` : ''}
+                      </td>
+                      <td className="p-3 text-right text-green-600 font-mono">
+                        {txn.creditAmount ? `₹${Number(txn.creditAmount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}` : ''}
+                      </td>
+                      <td className="p-3">
+                        <select
+                          value={txn.category?.id || ''}
+                          onChange={(e) => handleCategoryChange(txn.id, e.target.value)}
+                          className="border border-gray-200 rounded px-2 py-1 text-xs max-w-[160px] focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                        >
+                          <option value="">Uncategorized</option>
+                          {categories.map((c) => (
+                            <option key={c.id} value={c.id}>
+                              {c.icon} {c.name}
+                            </option>
+                          ))}
+                        </select>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

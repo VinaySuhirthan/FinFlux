@@ -63,8 +63,28 @@ export const transactionsApi = {
     api
       .get(`/statements/${statementId}/transactions`, { params })
       .then((r) => r.data),
+  listAll: (
+    params?: {
+      categoryId?: string;
+      search?: string;
+      dateFrom?: string;
+      dateTo?: string;
+      page?: number;
+      limit?: number;
+      direction?: 'DEBIT' | 'CREDIT';
+      sortBy?: string;
+      sortOrder?: 'asc' | 'desc';
+    },
+  ) =>
+    api
+      .get('/transactions/all', { params })
+      .then((r) => r.data),
   updateCategory: (id: string, categoryId: string) =>
     api.patch(`/transactions/${id}/category`, { categoryId }).then((r) => r.data),
+  update: (id: string, data: Partial<{ description: string; amount: number; txnDate: string; type: 'CR' | 'DR'; categoryId: string }>) =>
+    api.patch(`/transactions/${id}`, data).then((r) => r.data),
+  delete: (id: string) =>
+    api.delete(`/transactions/${id}`).then((r) => r.data),
   bulkCategorize: (transactionIds: string[], categoryId: string) =>
     api
       .post('/transactions/bulk-categorize', { transactionIds, categoryId })

@@ -5,6 +5,8 @@ export interface ParsedTransaction {
   debitAmount?: number;
   creditAmount?: number;
   balance?: number;
+  suggestedCategory?: string; // e.g., 'salary', 'food', etc.
+  classificationReason?: string; // e.g., 'accenture_keyword_match'
 }
 
 export interface ParseResult {

@@ -5,6 +5,7 @@ const navItems = [
   { to: '/dashboard', label: 'Dashboard', icon: '📊' },
   { to: '/upload', label: 'Upload', icon: '⬆️' },
   { to: '/statements', label: 'Statements', icon: '📄' },
+  { to: '/all-transactions', label: 'All Transactions', icon: '💸' },
   { to: '/rules', label: 'Rules', icon: '⚙️' },
 ];
 
@@ -22,7 +23,7 @@ export default function Layout() {
       {/* Sidebar */}
       <aside className="w-56 bg-white border-r border-gray-200 flex flex-col">
         <div className="px-6 py-5 border-b border-gray-200">
-          <h1 className="text-lg font-bold text-indigo-600">Kitna Karch</h1>
+          <h1 className="text-lg font-bold text-indigo-600">Kitna Kharcha</h1>
           <p className="text-xs text-gray-500 mt-0.5">Finance Tracker</p>
         </div>
         <nav className="flex-1 p-4 space-y-1">

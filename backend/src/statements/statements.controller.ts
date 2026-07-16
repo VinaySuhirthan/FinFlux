@@ -9,6 +9,7 @@ import {
   UseInterceptors,
   UploadedFile,
   BadRequestException,
+  Body,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
@@ -38,8 +39,14 @@ export class StatementsController {
         },
       }),
       fileFilter: (_req, file, cb) => {
-        if (file.mimetype !== 'application/pdf') {
-          cb(new BadRequestException('Only PDF files are accepted'), false);
+        const mimetype = (file && file.mimetype) ? file.mimetype : '';
+        const name = (file && file.originalname) ? file.originalname.toLowerCase() : '';
+        const isPdf = mimetype === 'application/pdf' || name.endsWith('.pdf');
+        const isTxt = mimetype === 'text/plain' || name.endsWith('.txt');
+        const isCsv = mimetype === 'text/csv' || name.endsWith('.csv');
+        const isXlsx = name.endsWith('.xlsx') || name.endsWith('.xls');
+        if (!isPdf && !isTxt && !isCsv && !isXlsx) {
+          cb(new BadRequestException('Only PDF, TXT, CSV or XLSX files are accepted'), false);
         } else {
           cb(null, true);
         }
@@ -51,7 +58,15 @@ export class StatementsController {
   )
   upload(@UploadedFile() file: Express.Multer.File, @Request() req) {
     if (!file) throw new BadRequestException('No file uploaded');
-    return this.statementsService.createUpload(req.user.id, file);
+    // Extract password from multipart form fields
+    const password = req.body?.pdfPassword || req.query?.pdfPassword || undefined;
+    console.log('Password received:', password);
+    return this.statementsService.createUpload(req.user.id, file, password);
+  }
+
+  @Post('import')
+  import(@Body() body: any, @Request() req) {
+    return this.statementsService.createFromImport(req.user.id, body);
   }
 
   @Get()

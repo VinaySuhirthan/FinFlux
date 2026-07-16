@@ -1,4 +1,4 @@
-import { Injectable, ConflictException, UnauthorizedException } from '@nestjs/common';
+import { Injectable, ConflictException, UnauthorizedException, Logger } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
 import { PrismaService } from '../prisma/prisma.service';
@@ -7,6 +7,8 @@ import { LoginDto } from './dto/login.dto';
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
+
   constructor(
     private prisma: PrismaService,
     private jwt: JwtService,
@@ -30,7 +32,9 @@ export class AuthService {
     const user = await this.prisma.user.findUnique({ where: { email: dto.email } });
     if (!user) throw new UnauthorizedException('Invalid credentials');
 
+    this.logger.debug(`Login attempt for ${dto.email}, password length: ${dto.password.length}`);
     const valid = await bcrypt.compare(dto.password, user.passwordHash);
+    this.logger.debug(`Password valid: ${valid}`);
     if (!valid) throw new UnauthorizedException('Invalid credentials');
 
     const token = this.sign(user.id, user.email);

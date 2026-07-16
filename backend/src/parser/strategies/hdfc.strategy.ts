@@ -17,7 +17,8 @@ export class HdfcParser implements BankParser {
   private generic = new GenericParser();
 
   canHandle(text: string): boolean {
-    return /hdfc\s+bank/i.test(text) || /withdrawal\s+amt/i.test(text);
+    // Accept both HDFC bank and credit card statements
+    return /hdfc\s+bank|hdfc\s+credit\s+card|withdrawal\s+amt|payment\s+due|statement\s+date/i.test(text);
   }
 
   parse(text: string): ParseResult {
@@ -29,10 +30,11 @@ export class HdfcParser implements BankParser {
       bankName: 'HDFC Bank',
     };
 
-    // Try to detect period
-    const periodMatch = text.match(
-      /(\d{2}\/\d{2}\/\d{4})\s+to\s+(\d{2}\/\d{2}\/\d{4})/i,
-    );
+    // Try to detect period (bank or credit card)
+    let periodMatch = text.match(/(\d{2}\/\d{2}\/\d{4})\s+to\s+(\d{2}\/\d{2}\/\d{4})/i);
+    if (!periodMatch) {
+      periodMatch = text.match(/Statement\s+Period\s*:\s*(\d{2}\/\d{2}\/\d{4})\s*-\s*(\d{2}\/\d{2}\/\d{4})/i);
+    }
     if (periodMatch) {
       result.statementPeriodStart = this.generic.parseDate(periodMatch[1]);
       result.statementPeriodEnd = this.generic.parseDate(periodMatch[2]);
@@ -40,10 +42,10 @@ export class HdfcParser implements BankParser {
 
     const lines = text.split('\n').map((l) => l.trim()).filter((l) => l.length > 0);
 
-    // Find header line
+    // Find header line (bank or credit card)
     let headerIdx = -1;
     for (let i = 0; i < lines.length; i++) {
-      if (/date.*narration.*withdrawal|date.*chq.*ref/i.test(lines[i])) {
+      if (/date.*narration.*withdrawal|date.*chq.*ref|date.*transaction.*amount.*balance|date.*description.*amount/i.test(lines[i])) {
         headerIdx = i;
         break;
       }
@@ -64,7 +66,7 @@ export class HdfcParser implements BankParser {
         continue;
       }
 
-      const txn = this.parseHdfcLine(line, lines, i);
+      const txn = this.parseHdfcLine(line, lines, i) || this.parseHdfcCreditCardLine(line);
       if (txn) {
         result.transactions.push(txn);
       } else if (line.length > 5) {
@@ -73,9 +75,14 @@ export class HdfcParser implements BankParser {
     }
 
     if (result.transactions.length === 0) {
-      result.warnings.push('No HDFC transactions parsed; falling back to generic parser');
-      const fallback = this.generic.parse(text);
-      return { ...fallback, bankName: 'HDFC Bank' };
+      result.errors.push('No HDFC transactions parsed; falling back to generic parser');
+      try {
+        const fallback = this.generic.parse(text);
+        return { ...fallback, bankName: 'HDFC Bank' };
+      } catch (e) {
+        result.errors.push('Generic parser also failed: ' + (e instanceof Error ? e.message : String(e)));
+        return result;
+      }
     }
 
     return result;
@@ -155,6 +162,39 @@ export class HdfcParser implements BankParser {
       debitAmount: withdrawalAmt,
       creditAmount: depositAmt,
       balance,
+    };
+  }
+
+  /**
+   * HDFC Credit Card line format (tab or multi-space separated):
+   * Date  Description  Amount
+   */
+  private parseHdfcCreditCardLine(line: string): ParsedTransaction | null {
+    const parts = line.split(/\s{2,}|\t/).map((p) => p.trim()).filter((p) => p.length > 0);
+    if (parts.length < 3) return null;
+    // Try DD/MM/YYYY or DD/MM/YY
+    const dateStr = parts[0];
+    const dateMatch = dateStr.match(/^\d{2}\/\d{2}\/\d{2,4}$/);
+    if (!dateMatch) return null;
+    const txnDate = this.generic.parseDate(dateStr);
+    if (isNaN(txnDate.getTime())) return null;
+    const description = parts[1];
+    // Amount is always positive for credit card, direction inferred from description
+    const amount = parseFloat(parts[2].replace(/,/g, ''));
+    if (isNaN(amount)) return null;
+    // Infer debit/credit from keywords
+    let debitAmount: number | undefined;
+    let creditAmount: number | undefined;
+    if (/payment|refund|reversal/i.test(description)) {
+      creditAmount = amount;
+    } else {
+      debitAmount = amount;
+    }
+    return {
+      txnDate,
+      description: description.substring(0, 300),
+      debitAmount,
+      creditAmount,
     };
   }
 }

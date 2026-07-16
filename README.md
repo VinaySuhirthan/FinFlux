@@ -1,4 +1,4 @@
-# Kitna Karch - Personal Finance Tracker
+# Kitna Kharcha - Personal Finance Tracker
 
 Upload bank statement PDFs, auto-categorize transactions with rule-based classification, and visualize your spending.
 
@@ -25,24 +25,24 @@ Upload bank statement PDFs, auto-categorize transactions with rule-based classif
 ### 1. Clone and navigate
 
 ```bash
-cd kitna-karch
+cd kitna-kharcha
 ```
 
 ### 2. Start PostgreSQL (Docker shortcut)
 
 ```bash
 docker run -d \
-  --name kitna_pg \
+  --name kitna_kharcha \
   -e POSTGRES_USER=postgres \
   -e POSTGRES_PASSWORD=password \
-  -e POSTGRES_DB=kitna_karch \
+  -e POSTGRES_DB=kitna_kharcha \
   -p 5432:5432 \
   postgres:15-alpine
 ```
 
 Or use your local PostgreSQL instance and create the database:
 ```sql
-CREATE DATABASE kitna_karch;
+CREATE DATABASE kitna_kharcha;
 ```
 
 ### 3. Backend setup
@@ -82,8 +82,8 @@ docker-compose up --build
 
 Run migrations inside container:
 ```bash
-docker exec -it kitna_karch_backend npx prisma migrate deploy
-docker exec -it kitna_karch_backend npx ts-node prisma/seed.ts
+docker exec -it kitna_kharcha_backend npx prisma migrate deploy
+docker exec -it kitna_kharcha_backend npx ts-node prisma/seed.ts
 ```
 
 ---
@@ -91,7 +91,7 @@ docker exec -it kitna_karch_backend npx ts-node prisma/seed.ts
 ## Architecture Overview
 
 ```
-kitna-karch/
+kitna-kharcha/
 ├── backend/
 │   ├── prisma/
 │   │   ├── schema.prisma          # DB schema

@@ -8,6 +8,7 @@ import Statements from './pages/Statements';
 import Transactions from './pages/Transactions';
 import Dashboard from './pages/Dashboard';
 import Rules from './pages/Rules';
+import AllTransactions from './pages/AllTransactions';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
@@ -44,6 +45,7 @@ export default function App() {
             <Route path="statements" element={<Statements />} />
             <Route path="statements/:id/transactions" element={<Transactions />} />
             <Route path="rules" element={<Rules />} />
+           <Route path="all-transactions" element={<AllTransactions />} />
           </Route>
         </Routes>
       </BrowserRouter>

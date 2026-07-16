@@ -31,12 +31,16 @@ export const authApi = {
 
 // Statements
 export const statementsApi = {
-  upload: (file: File) => {
+  upload: (file: File, pdfPassword?: string) => {
     const form = new FormData();
     form.append('file', file);
+    if (pdfPassword) form.append('pdfPassword', pdfPassword);
     return api.post('/statements/upload', form, {
       headers: { 'Content-Type': 'multipart/form-data' },
     }).then((r) => r.data);
+  },
+  importText: (text: string, rows?: any[], fileName?: string) => {
+    return api.post('/statements/import', { text, rows, fileName }).then((r) => r.data);
   },
   list: () => api.get('/statements').then((r) => r.data),
   get: (id: string) => api.get(`/statements/${id}`).then((r) => r.data),
@@ -59,8 +63,28 @@ export const transactionsApi = {
     api
       .get(`/statements/${statementId}/transactions`, { params })
       .then((r) => r.data),
+  listAll: (
+    params?: {
+      categoryId?: string;
+      search?: string;
+      dateFrom?: string;
+      dateTo?: string;
+      page?: number;
+      limit?: number;
+      direction?: 'DEBIT' | 'CREDIT';
+      sortBy?: string;
+      sortOrder?: 'asc' | 'desc';
+    },
+  ) =>
+    api
+      .get('/transactions/all', { params })
+      .then((r) => r.data),
   updateCategory: (id: string, categoryId: string) =>
     api.patch(`/transactions/${id}/category`, { categoryId }).then((r) => r.data),
+  update: (id: string, data: Partial<{ description: string; amount: number; txnDate: string; type: 'CR' | 'DR'; categoryId: string }>) =>
+    api.patch(`/transactions/${id}`, data).then((r) => r.data),
+  delete: (id: string) =>
+    api.delete(`/transactions/${id}`).then((r) => r.data),
   bulkCategorize: (transactionIds: string[], categoryId: string) =>
     api
       .post('/transactions/bulk-categorize', { transactionIds, categoryId })

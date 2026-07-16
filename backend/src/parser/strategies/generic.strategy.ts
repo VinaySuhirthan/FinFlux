@@ -120,18 +120,46 @@ export class GenericParser implements BankParser {
     // Common formats:
     //   desc  debit  credit  balance
     //   desc  amount  DR/CR  balance
+    //   NEFT CR-code  amount  balance
     let debitAmount: number | undefined;
     let creditAmount: number | undefined;
     let balance: number | undefined;
     let description = lineWithoutDate;
 
-    const drMatch = lineWithoutDate.match(/(\b[\d,]+\.?\d{0,2})\s*(dr|cr)\b/i);
+    // Enhanced detection for CR/DR indicators:
+    // 1. Look for CR/DR with amounts: "amount CR/DR balance" or "CR/DR amount balance"
+    // 2. Look for CR/DR as standalone keywords in the narration: "NEFT CR", "CR-", "-DR", etc.
+    // This handles formats like:
+    //   - "68,700.00 CR 533,686.39" (amount then CR then balance)
+    //   - "CR 68,700.00 533,686.39" (CR then amount then balance)
+    //   - "NEFT CR-BOFA... 68,700.00 533,686.39" (CR in narration with amounts following)
+    const crdrIndicatorMatch = lineWithoutDate.match(/\b(CR|DR)\b|\bCR-|CR\s|-DR\b|DR-/i);
+    let transactionType: 'CR' | 'DR' | undefined = undefined;
+    
+    if (crdrIndicatorMatch) {
+      const indicator = crdrIndicatorMatch[0].toUpperCase();
+      transactionType = indicator.includes('CR') ? 'CR' : 'DR';
+    }
+
+    // Try amount + CR/DR pattern first
+    const drMatch = lineWithoutDate.match(/(\b[\d,]+\.?\d{0,2})\s*([-\s]*)(?:cr|dr)([-\s]*)/i);
     if (drMatch) {
       const amt = this.parseAmount(drMatch[1]);
-      const type = drMatch[2].toLowerCase();
-      if (type === 'dr') debitAmount = amt;
-      else creditAmount = amt;
+      const type = drMatch[0].toLowerCase();
+      if (type.includes('dr')) debitAmount = amt;
+      else if (type.includes('cr')) creditAmount = amt;
       description = lineWithoutDate.replace(drMatch[0], '').trim();
+    } else if (transactionType && amounts.length >= 2) {
+      // CR/DR indicator found but no amount+indicator pattern
+      // Assume last 2 amounts are transaction amount and balance
+      const transAmount = amounts[amounts.length - 2];
+      const balanceAmount = amounts[amounts.length - 1];
+      if (transactionType === 'CR') {
+        creditAmount = transAmount;
+      } else {
+        debitAmount = transAmount;
+      }
+      balance = balanceAmount;
     } else if (amounts.length >= 3) {
       // Assume last = balance, second-to-last = credit or debit
       balance = amounts[amounts.length - 1];
@@ -154,7 +182,7 @@ export class GenericParser implements BankParser {
 
     if (!description || description.length < 3) return null;
 
-    return {
+    const txn: ParsedTransaction = {
       txnDate,
       description: description.substring(0, 300),
       reference,
@@ -162,6 +190,30 @@ export class GenericParser implements BankParser {
       creditAmount,
       balance,
     };
+
+    // Auto-classify based on description patterns
+    this.autoClassify(txn);
+
+    return txn;
+  }
+
+  /**
+   * Auto-classify transactions based on description patterns.
+   * Currently handles:
+   * - Salary detection for 'Accenture' (credits to account, typically salary)
+   */
+  private autoClassify(txn: ParsedTransaction): void {
+    const normalizedDesc = txn.description.toLowerCase();
+
+    // Accenture salary detection
+    if (normalizedDesc.includes('accenture')) {
+      // Only auto-classify as salary if it's a credit (income)
+      // Don't override if user has reason to classify differently
+      if (txn.creditAmount !== undefined && txn.creditAmount > 0) {
+        txn.suggestedCategory = 'salary';
+        txn.classificationReason = 'accenture_keyword_match';
+      }
+    }
   }
 
   private extractAmounts(text: string): number[] {

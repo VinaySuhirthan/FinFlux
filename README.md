@@ -1,150 +1,48 @@
-# Kitna Kharcha - Personal Finance Tracker
+# Kitna Kharcha
 
-Upload bank statement PDFs, auto-categorize transactions with rule-based classification, and visualize your spending.
+Upload a bank statement PDF, get every transaction auto-categorized — no LLM calls, just a rules engine and bank-specific parsers doing real work.
+
+## What it does
+
+A full-stack personal finance tracker: users upload bank statement PDFs (HDFC, SBI, or generic formats), the backend parses raw statement text into structured transactions, and a rule-based classification engine auto-categorizes each one against ~70 seeded rules plus any custom rules the user defines. Users can override any category manually, browse statements and transactions, and view spending analytics — category breakdown, monthly trend, and top merchants — on a dashboard.
 
 ## Tech Stack
 
-- **Frontend**: React 18, Vite, TypeScript, Tailwind CSS, Recharts
-- **Backend**: NestJS, TypeScript
-- **Database**: PostgreSQL
-- **ORM**: Prisma
-- **Auth**: JWT (bcryptjs + passport-jwt)
-- **PDF Parsing**: pdf-parse (text extraction)
-- **Classification**: Pure rule-based (no LLMs)
+![React](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=white)
+![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white)
+![NestJS](https://img.shields.io/badge/NestJS-E0234E?logo=nestjs&logoColor=white)
+![Prisma](https://img.shields.io/badge/Prisma-2D3748?logo=prisma&logoColor=white)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-4169E1?logo=postgresql&logoColor=white)
+![Docker](https://img.shields.io/badge/Docker-2496ED?logo=docker&logoColor=white)
+![Tailwind](https://img.shields.io/badge/Tailwind_CSS-06B6D4?logo=tailwindcss&logoColor=white)
 
----
+**Auth:** JWT (bcryptjs + passport-jwt) · **PDF parsing:** pdf-parse · **Classification:** pure rule-based, no LLMs
 
-## Local Setup
-
-### Prerequisites
-
-- Node.js 18+
-- PostgreSQL 14+ running locally (or use Docker)
-- npm or yarn
-
-### 1. Clone and navigate
-
-```bash
-cd kitna-kharcha
-```
-
-### 2. Start PostgreSQL (Docker shortcut)
-
-```bash
-docker run -d \
-  --name kitna_kharcha \
-  -e POSTGRES_USER=postgres \
-  -e POSTGRES_PASSWORD=password \
-  -e POSTGRES_DB=kitna_kharcha \
-  -p 5432:5432 \
-  postgres:15-alpine
-```
-
-Or use your local PostgreSQL instance and create the database:
-```sql
-CREATE DATABASE kitna_kharcha;
-```
-
-### 3. Backend setup
-
-```bash
-cd backend
-cp .env.example .env
-# Edit .env if your DB credentials differ
-
-npm install
-npx prisma migrate dev --name init
-npx prisma generate
-npm run prisma:seed        # Seeds categories and ~70 system rules
-npm run start:dev          # Starts on http://localhost:3001
-```
-
-### 4. Frontend setup
-
-```bash
-cd frontend
-npm install
-npm run dev                # Starts on http://localhost:5173
-```
-
-Open http://localhost:5173 in your browser.
-
----
-
-## Docker (Full Stack)
-
-```bash
-docker-compose up --build
-```
-
-- Frontend: http://localhost:5173
-- Backend: http://localhost:3001
-
-Run migrations inside container:
-```bash
-docker exec -it kitna_kharcha_backend npx prisma migrate deploy
-docker exec -it kitna_kharcha_backend npx ts-node prisma/seed.ts
-```
-
----
-
-## Architecture Overview
+## Architecture / How it works
 
 ```
 kitna-kharcha/
-├── backend/
-│   ├── prisma/
-│   │   ├── schema.prisma          # DB schema
-│   │   ├── seed.ts                # Default categories + rules
-│   │   └── sample-data/           # Sample statement for testing
-│   └── src/
-│       ├── auth/                  # JWT auth (register/login)
-│       ├── users/                 # User management
-│       ├── statements/            # PDF upload + async processing
-│       ├── transactions/          # CRUD + bulk categorize
-│       ├── parser/
-│       │   ├── interfaces/        # BankParser interface
-│       │   └── strategies/
-│       │       ├── generic.strategy.ts   # Fallback heuristic parser
-│       │       ├── hdfc.strategy.ts      # HDFC-specific parser
-│       │       └── sbi.strategy.ts       # SBI-specific parser
-│       ├── classification/        # Rule-based engine
-│       ├── rules/                 # User-managed rules CRUD
-│       └── analytics/             # Aggregations for dashboard
-└── frontend/
-    └── src/
-        ├── contexts/              # AuthContext
-        ├── services/api.ts        # Axios API layer
-        └── pages/
-            ├── Login / Register
-            ├── Upload             # Drag-and-drop PDF upload
-            ├── Statements         # List of uploaded statements
-            ├── Transactions       # Table with inline category editing
-            ├── Dashboard          # Charts: category pie, monthly bar, top merchants
-            └── Rules              # Custom rule management
+├── backend/src/
+│   ├── auth/            # JWT register/login
+│   ├── statements/      # PDF upload + async processing
+│   ├── parser/
+│   │   ├── interfaces/         # shared BankParser interface
+│   │   └── strategies/
+│   │       ├── hdfc.strategy.ts     # HDFC-specific parser
+│   │       ├── sbi.strategy.ts      # SBI-specific parser
+│   │       └── generic.strategy.ts  # heuristic fallback
+│   ├── classification/  # rule-matching engine
+│   ├── rules/            # user-managed rule CRUD
+│   └── analytics/        # dashboard aggregations
+└── frontend/src/pages/
+    ├── Login / Register
+    ├── Upload             # drag-and-drop PDF upload
+    ├── Statements / Transactions
+    ├── Dashboard           # category pie, monthly bar, top merchants
+    └── Rules               # custom rule management
 ```
 
-### Data Flow
-
-1. User uploads PDF → `POST /statements/upload`
-2. Multer saves file to `./uploads/`
-3. `StatementsService.processStatement()` runs asynchronously:
-   - `ParserService.parseFile()` → selects best parser strategy → returns `ParsedTransaction[]`
-   - `ClassificationService.classifyBatch()` → matches each description against rules
-   - Transactions saved to DB with category + classification reason
-4. Frontend polls or navigates to `/statements/:id/transactions`
-5. User can manually override categories; manual overrides survive re-classification
-
-### Classification Engine
-
-- Rules stored in `ClassificationRule` table (seeded with ~70 built-in rules)
-- Priority: higher number = matched first
-- Match types: `KEYWORD` (string contains) or `REGEX` (JS regex)
-- Descriptions are normalized before matching: lowercased, special chars → spaces, collapsed whitespace
-- First matching rule wins; fallback = Uncategorized
-- Manual overrides (`isManualOverride = true`) are preserved during reprocessing
-
-### Parser Architecture
+**Data flow:** PDF upload → `ParserService` picks the right strategy (HDFC → SBI → Generic fallback, each self-selects via `canHandle()`) → `ClassificationService` matches each transaction description against prioritized rules (keyword or regex) → saved with category + reason → dashboard aggregates on read. Manual category overrides are flagged and survive re-classification.
 
 ```typescript
 interface BankParser {
@@ -154,8 +52,52 @@ interface BankParser {
 }
 ```
 
-Parsers are tried in order: HDFC → SBI → Generic (fallback).
-Each parser's `canHandle()` inspects extracted text for bank-specific markers.
+## Setup & Run
+
+**Docker (fastest — full stack):**
+```bash
+docker-compose up --build
+# frontend: http://localhost:5173
+# backend:  http://localhost:3001
+
+docker exec -it kitna_kharcha_backend npx prisma migrate deploy
+docker exec -it kitna_kharcha_backend npx ts-node prisma/seed.ts
+```
+
+**Manual setup:**
+```bash
+# Postgres
+docker run -d --name kitna_kharcha \
+  -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=password -e POSTGRES_DB=kitna_kharcha \
+  -p 5432:5432 postgres:15-alpine
+
+# Backend
+cd backend
+cp .env.example .env
+npm install
+npx prisma migrate dev --name init
+npx prisma generate
+npm run prisma:seed        # seeds categories + ~70 system rules
+npm run start:dev          # http://localhost:3001
+
+# Frontend (new terminal)
+cd frontend
+npm install
+npm run dev                # http://localhost:5173
+```
+
+## Screenshots / Demo
+
+**[Add a screenshot of the Dashboard — category pie + monthly trend chart]**
+**[Add a screenshot of the Transactions table with inline category editing]**
+**[Add a GIF of uploading a PDF → seeing it auto-categorized]**
+
+## What I learned / Key challenges
+
+- **Strategy pattern for parsers that don't share a format.** HDFC and SBI statements have completely different column layouts and headers — hardcoding either would break on the other. Each parser self-declares whether it can handle a given statement via `canHandle()`, tried in order with a generic heuristic parser as the final fallback, so adding a new bank later means writing one new file, not touching existing ones.
+- **Designing classification to be overridable, not just automatic.** Auto-categorization is only useful if wrong guesses are easy to fix and stay fixed — `isManualOverride` flags on transactions mean a user's manual correction survives if the statement gets reprocessed later, rather than getting silently reverted.
+- **Money as `Decimal`, not `float`.** Amount fields use Prisma's `Decimal(15,2)` rather than floating point, since financial arithmetic on floats silently accumulates rounding errors — a mistake that's invisible until totals stop matching.
+- **Real bank statements are inconsistent.** Multi-line narrations, comma-formatted amounts, DR/CR suffixes, and page-break column misalignment in multi-page PDFs all needed explicit handling — see [Assumptions & Limitations](#assumptions--limitations) below for what's still not bulletproof.
 
 ---
 
@@ -186,52 +128,40 @@ Each parser's `canHandle()` inspects extracted text for bank-specific markers.
 
 All endpoints except auth require `Authorization: Bearer <token>`.
 
----
-
 ## Assumptions & Limitations
 
-### PDF Parsing
+**PDF Parsing**
+- Text-based PDFs only — scanned/image PDFs won't parse. Use "Save as PDF" from net banking, not a photo/scan.
+- HDFC parser targets HDFC Net Banking's tab/multi-space column format; multi-line narrations may be partially captured.
+- SBI parser targets SBI's text export format; alignment variations may cause field misassignment.
+- Generic fallback is heuristic-based — works for simple layouts, may misattribute debit/credit in ambiguous ones.
+- Commas in amounts and DR/CR suffixes are handled correctly.
 
-- **Text-based PDFs only**: Scanned/image-based PDFs will fail to parse. Use "Save as PDF" from your bank's net banking portal, not a photo/scan.
-- **HDFC parser**: Designed for HDFC Net Banking statement format with tab/multi-space separated columns. Multi-line narrations may be partially captured.
-- **SBI parser**: Designed for SBI account statement text export. Alignment variations may cause field misassignment.
-- **Generic parser**: Heuristic-based; extracts date + amounts + surrounding text. Works reasonably well for simple statements but may misattribute debit/credit in ambiguous layouts.
-- **Multi-page PDFs**: pdf-parse concatenates all pages as text; this works but column alignment from page breaks can confuse parsers.
-- **Commas in amounts**: Handled (e.g., "1,500.00" → 1500.00).
-- **DR/CR suffix**: Handled by generic parser.
+**Classification**
+- Rules match against normalized description text only (not amount or date).
+- UPI transactions default to "Transfers" since the real merchant is often buried in the reference number.
+- Pre-seeded rules cover common Indian bank merchants/services; regional or obscure ones fall to Uncategorized.
 
-### Classification
-
-- Rules are matched against normalized description text only (not amount or date).
-- "UPI" transactions are categorized as Transfers by default since the actual merchant may appear in the narration alongside UPI reference numbers.
-- Common Indian bank merchants/services are pre-seeded. Regional or obscure merchants will fall to Uncategorized.
-
-### MVP Scope
-
-- Single user per session (no multi-tenant sharing).
-- Uploads stored on local disk (`./uploads/`). Architecture is ready for S3 by swapping the `diskStorage` in `StatementsController` with an S3 multer adapter.
-- No background job queue: parsing runs in-process after upload response. For large PDFs or high concurrency, replace with Bull/Redis queue.
+**Scope**
+- Single user per session, no multi-tenant sharing.
+- Uploads stored on local disk (`./uploads/`) — architecture is S3-ready by swapping the multer storage adapter in `StatementsController`.
+- Parsing runs in-process after upload (no job queue yet — see below).
 - No email verification or password reset flow.
-
----
 
 ## Adding a New Bank Parser
 
 1. Create `backend/src/parser/strategies/mybank.strategy.ts` implementing `BankParser`
-2. Add it to the parsers array in `parser.service.ts` (before GenericParser)
-3. Implement `canHandle()` to detect bank-specific text patterns
+2. Register it in the parsers array in `parser.service.ts` (before `GenericParser`)
+3. Implement `canHandle()` to detect bank-specific text markers
 4. Implement `parse()` to extract `ParsedTransaction[]`
-
----
 
 ## Future Improvements
 
 - [ ] Background job queue (Bull + Redis) for PDF processing
-- [ ] S3 upload support (swap multer storage)
-- [ ] Multiple statement merge view (cross-statement analytics)
+- [ ] S3 upload support
+- [ ] Cross-statement analytics
 - [ ] CSV export of transactions
 - [ ] Budget tracking and alerts
-- [ ] Receipt/transaction image attachment
 - [ ] Recurring transaction detection
 - [ ] Credit card statement support (separate billing cycle handling)
 - [ ] Multi-currency support

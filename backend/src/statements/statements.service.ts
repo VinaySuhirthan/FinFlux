@@ -1,9 +1,14 @@
 import { Injectable, Logger, NotFoundException, BadRequestException } from '@nestjs/common';
 import { ParseStatus, Direction, ClassificationReason } from '@prisma/client';
 import * as path from 'path';
+import { execFile } from 'child_process';
+import { promisify } from 'util';
 import { PrismaService } from '../prisma/prisma.service';
 import { ParserService } from '../parser/parser.service';
 import { ClassificationService } from '../classification/classification.service';
+import { AnalyticsService } from '../analytics/analytics.service';
+
+const execFileAsync = promisify(execFile);
 
 @Injectable()
 export class StatementsService {
@@ -13,7 +18,23 @@ export class StatementsService {
     private prisma: PrismaService,
     private parser: ParserService,
     private classification: ClassificationService,
+    private analytics: AnalyticsService,
   ) {}
+
+  private async runIncomePrediction() {
+    const scriptPath = path.resolve(process.cwd(), 'income.py');
+    const pythonCommand = process.env.PYTHON_EXECUTABLE || 'python';
+
+    try {
+      const result = await execFileAsync(pythonCommand, [scriptPath], {
+        cwd: process.cwd(),
+        timeout: 120000,
+      });
+      this.logger.log(`Income prediction completed: ${result.stdout.trim()}`);
+    } catch (err: any) {
+      this.logger.warn(`Income prediction failed: ${err.message}`);
+    }
+  }
 
   async createUpload(userId: string, file: Express.Multer.File, pdfPassword?: string) {
     const statement = await this.prisma.statementUpload.create({
@@ -137,6 +158,8 @@ export class StatementsService {
       await this.prisma.transaction.createMany({ data: txnData });
 
       await this.prisma.statementUpload.update({ where: { id: statement.id }, data: { parseStatus: ParseStatus.COMPLETED } });
+      await this.analytics.refreshStoredAnalytics(userId);
+      await this.runIncomePrediction();
       this.logger.log(`Imported statement ${statement.id} processed: ${txnData.length} transactions`);
       return statement;
     } catch (err: any) {
@@ -234,6 +257,15 @@ export class StatementsService {
         },
       });
 
+      const statement = await this.prisma.statementUpload.findUnique({
+        where: { id: statementId },
+        select: { userId: true },
+      });
+      if (statement) {
+        await this.analytics.refreshStoredAnalytics(statement.userId);
+        await this.runIncomePrediction();
+      }
+
       this.logger.log(`Statement ${statementId} processed: ${txnData.length} transactions`);
     } catch (err) {
       this.logger.error(`Error processing statement ${statementId}:`, err);
@@ -278,6 +310,7 @@ export class StatementsService {
     await this.prisma.transaction.deleteMany({ where: { statementId: id } });
     await this.prisma.parseLog.deleteMany({ where: { statementId: id } });
     await this.prisma.statementUpload.delete({ where: { id } });
+    await this.analytics.refreshStoredAnalytics(userId);
     return { deleted: true };
   }
 }

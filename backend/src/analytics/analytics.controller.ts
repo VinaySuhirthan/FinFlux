@@ -1,4 +1,4 @@
-import { Controller, Get, Query, UseGuards, Request } from '@nestjs/common';
+import { Controller, Get, Post, Query, UseGuards, Request } from '@nestjs/common';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { AnalyticsService } from './analytics.service';
 
@@ -47,5 +47,27 @@ export class AnalyticsController {
       dateTo,
       limit ? parseInt(limit) : 10,
     );
+  }
+    @Get('features')
+  financialFeatures(
+    @Request() req,
+    @Query('dateFrom') dateFrom?: string,
+    @Query('dateTo') dateTo?: string,
+  ) {
+    return this.analyticsService.getFinancialFeatures(
+      req.user.id,
+      dateFrom,
+      dateTo,
+    );
+  }
+
+  @Post('stored/refresh')
+  refreshStoredAnalytics(@Request() req) {
+    return this.analyticsService.refreshStoredAnalytics(req.user.id);
+  }
+
+  @Get('stored')
+  storedAnalytics(@Request() req) {
+    return this.analyticsService.getStoredAnalytics(req.user.id);
   }
 }

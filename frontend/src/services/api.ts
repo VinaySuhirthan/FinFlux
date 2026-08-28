@@ -102,6 +102,12 @@ export const analyticsApi = {
     api.get('/analytics/monthly-trend', { params }).then((r) => r.data),
   topMerchants: (params?: { dateFrom?: string; dateTo?: string; limit?: number }) =>
     api.get('/analytics/top-merchants', { params }).then((r) => r.data),
+  features: (params?: { dateFrom?: string; dateTo?: string }) =>
+    api.get('/analytics/features', { params }).then((r) => r.data),
+  stored: () =>
+    api.get('/analytics/stored').then((r) => r.data),
+  refreshStored: () =>
+    api.post('/analytics/stored/refresh').then((r) => r.data),
 };
 
 // Rules

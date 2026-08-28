@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
 import { StatementsModule } from './statements/statements.module';
@@ -7,6 +8,7 @@ import { ParserModule } from './parser/parser.module';
 import { ClassificationModule } from './classification/classification.module';
 import { RulesModule } from './rules/rules.module';
 import { AnalyticsModule } from './analytics/analytics.module';
+import { FinancialFeaturesModule } from './financial-features/financial-features.module';
 import { PrismaModule } from './prisma/prisma.module';
 
 @Module({
@@ -20,6 +22,7 @@ import { PrismaModule } from './prisma/prisma.module';
     ClassificationModule,
     RulesModule,
     AnalyticsModule,
+    FinancialFeaturesModule,
   ],
 })
 export class AppModule {}

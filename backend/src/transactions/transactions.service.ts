@@ -1,10 +1,14 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { ClassificationReason } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { AnalyticsService } from '../analytics/analytics.service';
 
 @Injectable()
 export class TransactionsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private analytics: AnalyticsService,
+  ) {}
 
   async updateTransaction(userId: string, txnId: string, dto: any) {
     const txn = await this.prisma.transaction.findFirst({
@@ -32,10 +36,14 @@ export class TransactionsService {
     }
     if (dto.categoryId !== undefined) updateData.categoryId = dto.categoryId;
 
-    return this.prisma.transaction.update({
+    const updated = await this.prisma.transaction.update({
       where: { id: txnId },
       data: updateData,
     });
+
+    await this.analytics.refreshStoredAnalytics(userId);
+
+    return updated;
   }
 
   async findAllForUser(
@@ -153,7 +161,7 @@ export class TransactionsService {
     });
     if (!txn) throw new NotFoundException('Transaction not found');
 
-    return this.prisma.transaction.update({
+    const updated = await this.prisma.transaction.update({
       where: { id: txnId },
       data: {
         categoryId,
@@ -162,6 +170,10 @@ export class TransactionsService {
       },
       include: { category: true },
     });
+
+    await this.analytics.refreshStoredAnalytics(userId);
+
+    return updated;
   }
 
   async bulkCategorize(userId: string, transactionIds: string[], categoryId: string) {
@@ -181,6 +193,8 @@ export class TransactionsService {
       },
     });
 
+    await this.analytics.refreshStoredAnalytics(userId);
+
     return { updated: validIds.length };
   }
 
@@ -193,6 +207,8 @@ export class TransactionsService {
     await this.prisma.transaction.delete({
       where: { id: txnId },
     });
+
+    await this.analytics.refreshStoredAnalytics(userId);
 
     return { success: true, message: 'Transaction deleted successfully', id: txnId };
   }

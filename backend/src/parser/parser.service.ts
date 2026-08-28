@@ -105,8 +105,11 @@ export class ParserService {
     }
 
     const text = pdfData.text;
-    this.logger.debug(`Extracted ${text.length} characters from PDF`);
-    return this.parseText(text);
+
+this.logger.debug(`Extracted ${text.length} characters from PDF`);
+this.logger.debug(`EXTRACTED PDF TEXT:\n${text}`);
+
+return this.parseText(text);
   }
 
   parseText(text: string): ParseResult {

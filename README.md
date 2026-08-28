@@ -1,4 +1,4 @@
-# Kitna Kharcha
+# finflux
 
 Upload a bank statement PDF, get every transaction auto-categorized — no LLM calls, just a rules engine and bank-specific parsers doing real work.
 

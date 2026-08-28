@@ -1,0 +1,346 @@
+FINFLUX - LOCAL SETUP AND RUN GUIDE
+
+This guide explains how to run Finflux locally on Windows without
+Docker.
+
+================================================== 1. REQUIRED SOFTWARE
+==================================================
+
+Install: - Node.js - npm - PostgreSQL - pgAdmin 4
+
+Verify Node.js:
+
+node –version npm –version
+
+================================================== 2. PROJECT STRUCTURE
+==================================================
+
+Finflux/ ├── backend/ NestJS + Prisma + PostgreSQL ├── frontend/ React +
+Vite ├── docs/ └── scripts/
+
+Use your actual project path. Example:
+
+cd C:
+
+If the folder still has its old name, use that path until you rename it.
+
+================================================== 3. BACKEND
+DEPENDENCIES ==================================================
+
+Navigate to backend:
+
+cd backend
+
+Install dependencies:
+
+npm install
+
+Main backend technologies/libraries: - NestJS - Prisma - PostgreSQL -
+JWT - Passport - bcryptjs - class-validator - class-transformer -
+Multer - pdf-parse - csv-parse - xlsx - TypeScript
+
+Generate Prisma Client:
+
+npm run prisma:generate
+
+Equivalent:
+
+npx prisma generate
+
+================================================== 4. CREATE THE
+DATABASE ==================================================
+
+Open pgAdmin and connect to your local PostgreSQL server.
+
+Create a database named:
+
+finflux
+
+Or run in Query Tool:
+
+CREATE DATABASE finflux;
+
+================================================== 5. CREATE
+backend/.env ==================================================
+
+Create a file named .env inside backend.
+
+Example:
+
+DATABASE_URL=“postgresql://postgres:YOUR_PASSWORD@localhost:5432/finflux”
+JWT_SECRET=“your-super-secret-jwt-key-change-in-production”
+JWT_EXPIRES_IN=“7d” PORT=3001 UPLOAD_DIR=“./uploads” MAX_FILE_SIZE_MB=20
+
+Replace YOUR_PASSWORD with your PostgreSQL password.
+
+Example:
+
+DATABASE_URL=“postgresql://postgres:Finflux2026@localhost:5432/finflux”
+
+Do not publish your .env file.
+
+================================================== 6. CREATE DATABASE
+TABLES ==================================================
+
+From the backend directory run:
+
+npm run prisma:migrate
+
+If Prisma asks for a migration name, use something like:
+
+initial_setup
+
+Expected tables include:
+
+-   _prisma_migrations
+-   User
+-   StatementUpload
+-   Transaction
+-   Category
+-   ClassificationRule
+-   ParseLog
+
+================================================== 7. SEED DEFAULT
+CATEGORIES AND RULES ==================================================
+
+Run:
+
+npm run prisma:seed
+
+Verify categories:
+
+SELECT * FROM “Category”;
+
+Verify classification rules:
+
+SELECT * FROM “ClassificationRule”;
+
+================================================== 8. RUN THE BACKEND
+==================================================
+
+From backend:
+
+npm run start:dev
+
+Expected URL:
+
+http://localhost:3001
+
+If port 3001 is already in use:
+
+netstat -ano | findstr :3001
+
+Then terminate the process:
+
+taskkill /PID PROCESS_ID /F
+
+Replace PROCESS_ID with the actual PID.
+
+Then start again:
+
+npm run start:dev
+
+================================================== 9. FRONTEND
+DEPENDENCIES ==================================================
+
+Open a NEW PowerShell window.
+
+Navigate to frontend:
+
+cd C:
+
+Install dependencies:
+
+npm install
+
+Main frontend technologies/libraries: - React - React DOM - React Router
+DOM - Vite - Axios - Recharts - date-fns - Tailwind CSS - TypeScript
+
+================================================== 10. RUN THE FRONTEND
+==================================================
+
+Run:
+
+npm run dev
+
+Open:
+
+http://localhost:5173/
+
+The frontend communicates with the NestJS backend at:
+
+http://localhost:3001
+
+================================================== 11. NORMAL DAILY
+WORKFLOW ==================================================
+
+STEP 1: Make sure PostgreSQL is running.
+
+STEP 2: Start backend:
+
+cd C: npm run start:dev
+
+Backend: http://localhost:3001
+
+STEP 3: Open another PowerShell window and start frontend:
+
+cd C: npm run dev
+
+Frontend: http://localhost:5173/
+
+================================================== 12. USEFUL PRISMA
+COMMANDS ==================================================
+
+Generate Prisma client:
+
+npm run prisma:generate
+
+Create/update migration:
+
+npm run prisma:migrate
+
+Seed database:
+
+npm run prisma:seed
+
+Open Prisma Studio:
+
+npm run prisma:studio
+
+================================================== 13. USEFUL PGADMIN
+QUERIES ==================================================
+
+View categories:
+
+SELECT * FROM “Category”;
+
+View transactions:
+
+SELECT * FROM “Transaction”;
+
+View classification rules:
+
+SELECT * FROM “ClassificationRule”;
+
+View statement uploads:
+
+SELECT * FROM “StatementUpload”;
+
+View users:
+
+SELECT * FROM “User”;
+
+Count transactions:
+
+SELECT COUNT(*) FROM “Transaction”;
+
+View transactions categorized as Transfers:
+
+SELECT t.* FROM “Transaction” t JOIN “Category” c ON t.”categoryId” =
+c.id WHERE c.name = ‘Transfers’;
+
+View rules by highest priority first:
+
+SELECT * FROM “ClassificationRule” ORDER BY priority DESC;
+
+================================================== 14. CLASSIFICATION
+RULE PRIORITY ==================================================
+
+Higher priority rules are matched first.
+
+Specific rules should have higher priority.
+
+Example:
+
+Pattern: chatmithra Priority: 100
+
+Broad rule:
+
+Pattern: UPI Priority: 10
+
+This allows specific transaction patterns to match before broad terms
+such as UPI.
+
+Changing a rule does not automatically update transactions that were
+already categorized. Existing transactions may need to be reprocessed.
+
+================================================== 15. BUILDING THE
+PROJECT ==================================================
+
+Backend:
+
+cd backend npm run build
+
+Run compiled backend:
+
+npm start
+
+Frontend production build:
+
+cd frontend npm run build
+
+Preview frontend build:
+
+npm run preview
+
+================================================== 16. PROJECT NAME
+==================================================
+
+The project name is:
+
+Finflux
+
+Recommended package names:
+
+Backend package.json: “name”: “finflux-backend”
+
+Frontend package.json: “name”: “finflux-frontend”
+
+Update any remaining old project-name references in: - package.json -
+README.md - visible frontend text - documentation
+
+================================================== 17. DOCKER IS NOT
+REQUIRED ==================================================
+
+Finflux runs locally without Docker.
+
+Potential Docker-related files that are not needed for this local
+workflow:
+
+-   docker-compose.yml
+-   backend/Dockerfile
+-   frontend/Dockerfile
+-   backend/.dockerignore
+-   frontend/.dockerignore
+
+Only remove nginx.conf if it was used solely for the previous
+Docker/Nginx deployment.
+
+================================================== 18. QUICK START
+==================================================
+
+BACKEND:
+
+cd Finflux npm install npm run prisma:generate npm run prisma:migrate
+npm run prisma:seed npm run start:dev
+
+FRONTEND:
+
+cd Finflux npm install npm run dev
+
+DATABASE:
+
+PostgreSQL running locally Database name: finflux
+
+BACKEND: http://localhost:3001
+
+FRONTEND: http://localhost:5173/
+
+================================================== FINFLUX LOCAL
+ARCHITECTURE ==================================================
+
+Browser | v React + Vite Frontend http://localhost:5173 | | API Requests
+v NestJS Backend http://localhost:3001 | | Prisma v Local PostgreSQL
+Database Database: finflux | v Managed with pgAdmin
+
+END OF GUIDE

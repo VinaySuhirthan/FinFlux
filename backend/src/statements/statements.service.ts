@@ -36,6 +36,66 @@ export class StatementsService {
     }
   }
 
+  private async runIncomeVolatility() {
+    const scriptPath = path.resolve(process.cwd(), 'volatility.py');
+    const pythonCommand = process.env.PYTHON_EXECUTABLE || 'python';
+
+    try {
+      const result = await execFileAsync(pythonCommand, [scriptPath], {
+        cwd: process.cwd(),
+        timeout: 120000,
+      });
+      this.logger.log(`Income volatility completed: ${result.stdout.trim()}`);
+    } catch (err: any) {
+      this.logger.warn(`Income volatility failed: ${err.message}`);
+    }
+  }
+
+  private async runIncomeReliability() {
+    const scriptPath = path.resolve(process.cwd(), 'reliability.py');
+    const pythonCommand = process.env.PYTHON_EXECUTABLE || 'python';
+
+    try {
+      const result = await execFileAsync(pythonCommand, [scriptPath], {
+        cwd: process.cwd(),
+        timeout: 120000,
+      });
+      this.logger.log(`Income reliability completed: ${result.stdout.trim()}`);
+    } catch (err: any) {
+      this.logger.warn(`Income reliability failed: ${err.message}`);
+    }
+  }
+
+  private async runDownsideRisk() {
+    const scriptPath = path.resolve(process.cwd(), 'downside.py');
+    const pythonCommand = process.env.PYTHON_EXECUTABLE || 'python';
+
+    try {
+      const result = await execFileAsync(pythonCommand, [scriptPath], {
+        cwd: process.cwd(),
+        timeout: 120000,
+      });
+      this.logger.log(`Downside risk completed: ${result.stdout.trim()}`);
+    } catch (err: any) {
+      this.logger.warn(`Downside risk failed: ${err.message}`);
+    }
+  }
+
+  private async runSavingsCalculation() {
+    const scriptPath = path.resolve(process.cwd(), 'savings.py');
+    const pythonCommand = process.env.PYTHON_EXECUTABLE || 'python';
+
+    try {
+      const result = await execFileAsync(pythonCommand, [scriptPath], {
+        cwd: process.cwd(),
+        timeout: 120000,
+      });
+      this.logger.log(`Income outlook completed: ${result.stdout.trim()}`);
+    } catch (err: any) {
+      this.logger.warn(`Income outlook failed: ${err.message}`);
+    }
+  }
+
   async createUpload(userId: string, file: Express.Multer.File, pdfPassword?: string) {
     const statement = await this.prisma.statementUpload.create({
       data: {
@@ -160,6 +220,10 @@ export class StatementsService {
       await this.prisma.statementUpload.update({ where: { id: statement.id }, data: { parseStatus: ParseStatus.COMPLETED } });
       await this.analytics.refreshStoredAnalytics(userId);
       await this.runIncomePrediction();
+      await this.runIncomeVolatility();
+      await this.runIncomeReliability();
+      await this.runDownsideRisk();
+      await this.runSavingsCalculation();
       this.logger.log(`Imported statement ${statement.id} processed: ${txnData.length} transactions`);
       return statement;
     } catch (err: any) {
@@ -264,6 +328,10 @@ export class StatementsService {
       if (statement) {
         await this.analytics.refreshStoredAnalytics(statement.userId);
         await this.runIncomePrediction();
+        await this.runIncomeVolatility();
+        await this.runIncomeReliability();
+        await this.runDownsideRisk();
+        await this.runSavingsCalculation();
       }
 
       this.logger.log(`Statement ${statementId} processed: ${txnData.length} transactions`);

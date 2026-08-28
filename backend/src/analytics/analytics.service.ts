@@ -463,10 +463,31 @@ export class AnalyticsService {
   async getStoredAnalytics(userId: string) {
     const prisma = this.prisma as any;
 
-    return prisma.analytics.findUnique({
-      where: {
-        userId,
-      },
-    });
+    const rows = await prisma.$queryRaw`
+      SELECT a.*, a."IncomeVolatility"
+      FROM "Analytics" a
+      WHERE a."userId" = ${userId}
+      LIMIT 1
+    `;
+
+    const analytics = rows[0];
+    if (!analytics) return null;
+
+    const incomeData = typeof analytics.income === 'string'
+      ? JSON.parse(analytics.income)
+      : analytics.income ?? {};
+    const monthlyIncome = Object.values(incomeData)
+      .filter((entry: any) => entry && typeof entry === 'object')
+      .map((entry: any) => Number(entry.income ?? 0));
+    const averageIncome = monthlyIncome.length
+      ? monthlyIncome.reduce((total, income) => total + income, 0) / monthlyIncome.length
+      : 0;
+    const predictedIncome = Number(analytics.PredictedIncome ?? 0);
+
+    return {
+      ...analytics,
+      averageIncome: Number(averageIncome.toFixed(2)),
+      amountSaved: Number((predictedIncome - averageIncome).toFixed(2)),
+    };
   }
 }

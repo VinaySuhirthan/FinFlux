@@ -7,7 +7,7 @@ import Upload from './pages/Upload';
 import Statements from './pages/Statements';
 import Transactions from './pages/Transactions';
 import Dashboard from './pages/Dashboard';
-import Rules from './pages/Rules';
+import Analytics from './pages/Analytics';
 import AllTransactions from './pages/AllTransactions';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -41,10 +41,10 @@ export default function App() {
           >
             <Route index element={<Navigate to="/dashboard" replace />} />
             <Route path="dashboard" element={<Dashboard />} />
+            <Route path="analytics" element={<Analytics />} />
             <Route path="upload" element={<Upload />} />
             <Route path="statements" element={<Statements />} />
             <Route path="statements/:id/transactions" element={<Transactions />} />
-            <Route path="rules" element={<Rules />} />
            <Route path="all-transactions" element={<AllTransactions />} />
           </Route>
         </Routes>

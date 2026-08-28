@@ -4,15 +4,16 @@ import logo from '../../image.png';
 
 const navItems = [
   { to: '/dashboard', label: 'Dashboard', icon: 'dashboard' },
+  { to: '/analytics', label: 'Analytics', icon: 'analytics' },
   { to: '/upload', label: 'Upload', icon: 'upload' },
   { to: '/statements', label: 'Statements', icon: 'document' },
   { to: '/all-transactions', label: 'All Transactions', icon: 'transactions' },
-  { to: '/rules', label: 'Rules', icon: 'rules' },
 ];
 
 function NavIcon({ name }: { name: string }) {
   const common = { width: 18, height: 18, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 1.8, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const };
   if (name === 'dashboard') return <svg {...common}><rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" /><rect x="3" y="14" width="7" height="7" rx="1" /><rect x="14" y="14" width="7" height="7" rx="1" /></svg>;
+  if (name === 'analytics') return <svg {...common}><path d="M4 19V5M4 19h16" /><path d="m7 15 3-4 3 2 4-6" /></svg>;
   if (name === 'upload') return <svg {...common}><path d="M12 16V4" /><path d="m7 9 5-5 5 5" /><path d="M5 20h14" /></svg>;
   if (name === 'document') return <svg {...common}><path d="M6 3h9l3 3v15H6z" /><path d="M14 3v4h4M9 12h6M9 16h6" /></svg>;
   if (name === 'transactions') return <svg {...common}><path d="M4 7h16M4 12h16M4 17h10" /><circle cx="18" cy="17" r="2" /></svg>;

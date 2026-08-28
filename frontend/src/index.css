@@ -1,7 +1,314 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  font-family: 'DM Sans', 'Avenir Next', sans-serif;
+  color: #1b2433;
+  background: #f4f7fb;
+  font-size: 15px;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+}
+
+* {
+  box-sizing: border-box;
+}
+
 body {
-  @apply bg-gray-50 text-gray-900 antialiased;
+  margin: 0;
+  min-width: 320px;
+  background:
+    radial-gradient(circle at 8% 0%, rgba(111, 120, 245, 0.08), transparent 28%),
+    radial-gradient(circle at 92% 12%, rgba(67, 190, 151, 0.06), transparent 22%),
+    #f4f7fb;
+  color: #1b2433;
+  font-size: 0.94rem;
+  line-height: 1.5;
+  @apply antialiased;
+}
+
+h1, h2, h3, .finflux-kpi .text-xl {
+  font-family: 'Space Grotesk', 'Avenir Next', sans-serif;
+}
+
+h1 { font-weight: 600; }
+h2, h3 { font-weight: 600; }
+.font-mono { font-family: 'DM Sans', sans-serif; font-variant-numeric: tabular-nums; }
+table { font-size: 0.875rem; }
+label, th { font-size: 0.78rem; letter-spacing: 0.01em; }
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+button,
+a,
+select {
+  transition: color 160ms ease, background-color 160ms ease, border-color 160ms ease, opacity 160ms ease, transform 160ms ease;
+}
+
+@keyframes finflux-enter {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes finflux-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes finflux-logo-drift {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-2px); }
+}
+
+@keyframes finflux-icon-in {
+  from { opacity: 0; transform: scale(0.86); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.brand-logo, .auth-logo {
+  animation: finflux-logo-drift 5s ease-in-out infinite;
+  will-change: transform;
+}
+
+main > div {
+  animation: finflux-enter 360ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+main > div > div {
+  animation: finflux-enter 360ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+main > div > div:nth-child(2) { animation-delay: 45ms; }
+main > div > div:nth-child(3) { animation-delay: 85ms; }
+main > div > div:nth-child(4) { animation-delay: 125ms; }
+
+main a:hover { transform: translateY(-1px); }
+main button:not(:disabled):hover { transform: translateY(-1px); }
+main button:not(:disabled):active { transform: translateY(0); }
+
+.finflux-sidebar nav a {
+  position: relative;
+  transform: translateX(0);
+}
+
+.finflux-sidebar .nav-icon { display: inline-flex; align-items: center; justify-content: center; }
+.finflux-sidebar nav a[aria-current="page"] .nav-icon { color: #5159c0 !important; }
+.finflux-sidebar nav a:hover { transform: translateX(3px); }
+.finflux-sidebar nav a[aria-current="page"]::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 9px;
+  bottom: 9px;
+  width: 2px;
+  border-radius: 2px;
+  background: #6269d9;
+  animation: finflux-fade 180ms ease both;
+}
+
+.finflux-kpi,
+.finflux-panel {
+  transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease;
+}
+
+.finflux-kpi:hover,
+.finflux-panel:hover {
+  transform: translateY(-2px);
+  border-color: rgba(98, 105, 217, 0.22) !important;
+  box-shadow: 12px 14px 28px rgba(37, 50, 72, 0.08), -8px -8px 22px rgba(255, 255, 255, 0.9);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* The existing pages use Tailwind utilities directly. These tokens restyle that
+   shared vocabulary without touching their data flow or interaction handlers. */
+.bg-gray-50 { background-color: #f4f7fb !important; }
+.bg-white { background-color: rgba(255, 255, 255, 0.84) !important; }
+.bg-gray-100 { background-color: #edf1f7 !important; }
+.bg-indigo-50 { background-color: #eef0ff !important; }
+.bg-green-50 { background-color: #eaf8f2 !important; }
+.bg-red-50 { background-color: #fff0f1 !important; }
+.bg-orange-50, .bg-yellow-50, .bg-blue-50 { background-color: #fff6e8 !important; }
+.bg-indigo-600 { background-color: #6269d9 !important; }
+.hover\:bg-indigo-700:hover { background-color: #535ac3 !important; }
+
+.text-gray-900 { color: #182231 !important; }
+.text-gray-800, .text-gray-700 { color: #2c3748 !important; }
+.text-gray-600, .text-gray-500 { color: #667085 !important; }
+.text-gray-400 { color: #98a2b3 !important; }
+.text-indigo-600, .text-indigo-700 { color: #5159c0 !important; }
+.text-green-600, .text-green-700, .text-green-800 { color: #168b67 !important; }
+.text-red-500, .text-red-600, .text-red-700 { color: #d54d5c !important; }
+.text-orange-600, .text-blue-700, .text-blue-800 { color: #b66b13 !important; }
+
+.border-gray-200, .border-gray-300, .border-gray-100 { border-color: #e2e8f0 !important; }
+.border-indigo-200, .border-indigo-300 { border-color: rgba(98, 105, 217, 0.28) !important; }
+.border-green-200, .border-blue-200 { border-color: rgba(22, 139, 103, 0.22) !important; }
+.border-red-200 { border-color: rgba(213, 77, 92, 0.25) !important; }
+
+input, select, textarea {
+  color: #1b2433;
+  background-color: rgba(255, 255, 255, 0.76);
+  border-color: #d9e0ea !important;
+}
+
+input::placeholder, textarea::placeholder { color: #98a2b3; }
+input:focus, select:focus, textarea:focus { border-color: #7a81df !important; box-shadow: 0 0 0 3px rgba(98, 105, 217, 0.12); }
+
+table thead { background-color: #f7f9fc !important; }
+table tbody tr { border-color: #e9edf3 !important; }
+table tbody tr:hover { background-color: rgba(98, 105, 217, 0.045) !important; }
+
+h1 { letter-spacing: -0.035em; }
+h2, h3 { letter-spacing: -0.02em; }
+
+main > div > div:first-child h1 {
+  font-size: 1.8rem;
+  font-weight: 650;
+}
+
+.rounded-xl.border, .rounded-lg.border {
+  box-shadow: none !important;
+}
+
+*, *::before, *::after {
+  box-shadow: none !important;
+}
+
+.recharts-cartesian-grid-horizontal line, .recharts-cartesian-grid-vertical line { stroke: #e7ebf2; }
+.recharts-text { fill: #7b8798; }
+.recharts-legend-item-text { color: #667085 !important; }
+.recharts-tooltip-wrapper { outline: none; }
+.recharts-tooltip-item { color: #667085 !important; }
+.recharts-bar-rectangle { transition: opacity 180ms ease; }
+.recharts-bar-rectangle:hover { opacity: 0.78; }
+.donut-total-label { fill: #182231; font-size: 16px; font-weight: 700; }
+.donut-caption { fill: #7b8798; font-size: 10px; }
+.category-legend > div { min-width: 0; }
+.category-legend > div > span { white-space: nowrap; }
+.category-legend-row { min-width: 0; }
+.category-legend-meta { display: flex; align-items: center; gap: 8px; margin-top: 6px; color: #98a2b3; font-size: 10px; }
+.category-legend-track { height: 4px; flex: 1; overflow: hidden; border-radius: 4px; background: #edf1f7; }
+.category-legend-fill { height: 100%; border-radius: inherit; transition: width 500ms cubic-bezier(0.22, 1, 0.36, 1); }
+.merchant-row { min-width: 0; }
+.merchant-rank { display: inline-flex; align-items: center; justify-content: center; border: 1px solid #e2e8f0; border-radius: 50%; background: #f7f9fc; font-size: 10px; }
+.merchant-name { max-width: calc(100% - 92px); color: #344054 !important; }
+.merchant-track { overflow: hidden; background: #eef1f6 !important; }
+.merchant-fill { min-width: 5px; background: linear-gradient(90deg, #6269d9, #8b90ed) !important; transition: width 500ms cubic-bezier(0.22, 1, 0.36, 1); }
+.merchant-count { min-width: 28px; text-align: right; }
+.daily-spend-panel .recharts-area-area { transition: opacity 180ms ease; }
+.daily-spend-panel .recharts-area-area:hover { opacity: 0.82; }
+
+.finflux-kpi {
+  position: relative;
+  overflow: hidden;
+  min-height: 104px;
+  background: rgba(255, 255, 255, 0.88) !important;
+  border-radius: 13px !important;
+  backdrop-filter: blur(8px);
+}
+
+.finflux-kpi::after {
+  content: '';
+  position: absolute;
+  width: 90px;
+  height: 90px;
+  right: -34px;
+  top: -38px;
+  border: 1px solid rgba(98, 105, 217, 0.1);
+  border-radius: 50%;
+}
+
+.finflux-kpi::before {
+  content: '';
+  position: absolute;
+  right: 8px;
+  bottom: -22px;
+  width: 105px;
+  height: 70px;
+  opacity: 0.065;
+  transform: rotate(-8deg);
+  background: repeating-linear-gradient(0deg, currentColor 0 2px, transparent 2px 10px);
+  border-radius: 50% 50% 0 0;
+  pointer-events: none;
+}
+
+.metric-income { color: #168b67; }
+.metric-expense { color: #d54d5c; }
+.metric-flow { color: #168b67; }
+.metric-transactions { color: #5159c0; }
+.metric-warning { color: #b66b13; }
+
+.finflux-kpi .text-xl { position: relative; z-index: 1; font-size: 1.4rem; letter-spacing: -0.03em; }
+.finflux-kpi .text-xs { position: relative; z-index: 1; color: #8c94a5 !important; }
+.metric-icon { position: absolute; top: 12px; right: 13px; display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; border: 1px solid currentColor; border-radius: 11px; background: rgba(255, 255, 255, 0.78); opacity: 0.78; animation: finflux-icon-in 420ms cubic-bezier(0.22, 1, 0.36, 1) both; }
+
+.finflux-table-wrap { border-radius: 14px; }
+
+@media (max-width: 760px) {
+  main > div > div:first-child h1 { font-size: 1.45rem; }
+}
+
+.finflux-panel {
+  border: 1px solid rgba(220, 227, 238, 0.9);
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.92), rgba(248, 250, 253, 0.78));
+  box-shadow: none;
+  backdrop-filter: blur(16px);
+}
+
+.finflux-action {
+  background: #6269d9;
+  color: white;
+  box-shadow: none;
+}
+
+.finflux-action:hover { background: #535ac3; transform: translateY(-1px); }
+
+.auth-shell {
+  background: radial-gradient(circle at 50% 0%, rgba(98, 105, 217, 0.11), transparent 42%), #f4f7fb !important;
+}
+
+.auth-card { max-width: 430px; }
+.brand-logo { width: 174px; height: auto; display: block; }
+.upload-dropzone { background: rgba(255, 255, 255, 0.52); }
+.upload-dropzone:hover { background: rgba(238, 240, 255, 0.92) !important; }
+.upload-dropzone > div { animation: finflux-upload-pulse 3.4s ease-in-out infinite; }
+.upload-options { box-shadow: 8px 10px 22px rgba(37, 50, 72, 0.05), -6px -6px 16px rgba(255, 255, 255, 0.82); }
+.upload-note { background: rgba(255, 250, 239, 0.78) !important; border-color: #f0dfb8 !important; }
+
+@keyframes finflux-upload-pulse {
+  0%, 100% { transform: translateY(0); opacity: 0.82; }
+  50% { transform: translateY(-3px); opacity: 1; }
+}
+.account-icon { display: none; }
+
+@media (max-width: 760px) {
+  .finflux-sidebar { width: 72px !important; }
+  .finflux-sidebar .nav-label, .finflux-sidebar .brand-copy, .finflux-sidebar .account-copy { display: none; }
+  .finflux-sidebar nav a { justify-content: center; padding-left: 0.75rem; padding-right: 0.75rem; }
+  .finflux-sidebar .brand-logo { width: 36px; height: 36px; object-fit: cover; object-position: left center; border-radius: 10px; margin: 0 auto; }
+  .finflux-sidebar .account-icon { display: inline; }
+  .finflux-content { padding: 1.25rem !important; }
+  table { min-width: 720px; }
+  .overflow-hidden:has(table) { overflow-x: auto !important; }
+}
+
+@media (max-width: 520px) {
+  .finflux-sidebar { display: none; }
+  .finflux-content { padding: 1rem !important; }
 }

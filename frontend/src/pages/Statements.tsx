@@ -87,7 +87,7 @@ export default function Statements() {
       ) : (
         <div className="space-y-3">
           {statements.map((s) => (
-            <div key={s.id} className="bg-white border border-gray-200 rounded-xl p-5">
+            <div key={s.id} className="finflux-panel bg-white border border-gray-200 rounded-xl p-5">
               <div className="flex items-start justify-between">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">

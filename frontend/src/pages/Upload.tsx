@@ -57,6 +57,7 @@ export default function Upload() {
 
   return (
     <div>
+      <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-indigo-400 mb-1">Data intake</p>
       <h1 className="text-2xl font-bold mb-2">Upload Statement</h1>
       <p className="text-gray-500 mb-6">Upload a bank statement PDF to start tracking your expenses.</p>
 
@@ -85,7 +86,7 @@ export default function Upload() {
       ) : (
         <div className="space-y-4">
           <div
-            className={`border-2 border-dashed rounded-xl p-12 text-center cursor-pointer transition-colors ${
+            className={`upload-dropzone border-2 border-dashed rounded-xl p-12 text-center cursor-pointer transition-colors ${
               dragging ? 'border-indigo-400 bg-indigo-50' : 'border-gray-300 hover:border-indigo-400 hover:bg-gray-50'
             }`}
             onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
@@ -110,13 +111,13 @@ export default function Upload() {
               <>
                 <div className="text-4xl mb-3">📄</div>
                 <p className="text-gray-700 font-medium">Drop your PDF here or click to browse</p>
-                <p className="text-gray-400 text-sm mt-1">PDF files only, max 20 MB</p>
+                <p className="text-gray-400 text-sm mt-1">PDF, TXT, CSV or XLSX · max 20 MB</p>
               </>
             )}
           </div>
 
           {!status.includes('uploading') && (
-            <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 space-y-3">
+            <div className="upload-options finflux-panel bg-gray-50 border border-gray-200 rounded-lg p-5 space-y-3">
               <label htmlFor="pdf-password" className="block text-sm font-medium text-gray-700 mb-2">
                 PDF Password (if required)
               </label>
@@ -176,7 +177,7 @@ export default function Upload() {
         </div>
       )}
 
-      <div className="mt-8 bg-blue-50 border border-blue-200 rounded-xl p-4">
+      <div className="upload-note mt-8 bg-blue-50 border border-blue-200 rounded-xl p-4">
         <h3 className="text-sm font-semibold text-blue-800 mb-2">Supported formats</h3>
         <ul className="text-sm text-blue-700 space-y-1">
           <li>• HDFC Bank statements (text-based PDF)</li>

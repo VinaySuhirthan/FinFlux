@@ -243,7 +243,7 @@ export default function Transactions() {
         </div>
       ) : (
         <>
-          <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+          <div className="finflux-panel finflux-table-wrap bg-white border border-gray-200 rounded-xl overflow-hidden">
             <table className="w-full text-sm">
               <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>

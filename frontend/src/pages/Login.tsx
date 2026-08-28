@@ -1,6 +1,7 @@
 import { useState, FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import logo from '../../image.png';
 
 export default function Login() {
   const { login } = useAuth();
@@ -23,13 +24,13 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
+    <div className="auth-shell min-h-screen flex items-center justify-center bg-gray-50 px-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-indigo-600">finflux</h1>
+          <img src={logo} alt="FinFlux" className="auth-logo mx-auto mb-4 w-56 h-auto" />
           <p className="text-gray-500 mt-1">Track your expenses from bank statements</p>
         </div>
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8">
+        <div className="auth-card finflux-panel bg-white rounded-xl shadow-sm border border-gray-200 p-8">
           <h2 className="text-xl font-semibold mb-6">Sign in</h2>
           {error && (
             <div className="mb-4 p-3 bg-red-50 text-red-700 rounded-lg text-sm">{error}</div>

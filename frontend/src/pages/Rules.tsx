@@ -86,7 +86,7 @@ export default function Rules() {
       </p>
 
       {/* Create rule form */}
-      <div className="bg-white border border-gray-200 rounded-xl p-5 mb-6">
+      <div className="finflux-panel bg-white border border-gray-200 rounded-xl p-5 mb-6">
         <h2 className="text-base font-semibold mb-4">Add Custom Rule</h2>
         {error && <div className="mb-3 p-2 bg-red-50 text-red-600 rounded text-sm">{error}</div>}
         <form onSubmit={handleCreate} className="flex gap-3 flex-wrap items-end">
@@ -181,7 +181,7 @@ function RuleTable({
   showDelete?: boolean;
 }) {
   return (
-    <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+    <div className="finflux-panel bg-white border border-gray-200 rounded-xl overflow-hidden">
       <table className="w-full text-sm">
         <thead className="bg-gray-50 border-b border-gray-200">
           <tr>

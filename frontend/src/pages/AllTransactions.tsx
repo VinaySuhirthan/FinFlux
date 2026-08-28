@@ -169,7 +169,7 @@ export default function AllTransactions() {
           <p className="text-gray-500">No transactions found.</p>
         </div>
       ) : (
-        <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+        <div className="finflux-panel finflux-table-wrap bg-white border border-gray-200 rounded-xl overflow-hidden">
           <table className="w-full text-sm">
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>

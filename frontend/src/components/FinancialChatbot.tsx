@@ -240,7 +240,15 @@ function AiMessageBubble({
   );
 }
 
-export default function FinancialChatbot() {
+export interface FinancialChatbotProps {
+  mode?: 'compact' | 'popup' | 'bubble';
+  onModeChange?: (mode: 'compact' | 'popup' | 'bubble') => void;
+}
+
+export default function FinancialChatbot({
+  mode = 'compact',
+  onModeChange,
+}: FinancialChatbotProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -263,6 +271,74 @@ export default function FinancialChatbot() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // Draggable position state
+  const [position, setPosition] = useState<{ x: number; y: number } | null>(null);
+  const isDraggingRef = useRef(false);
+  const dragStartRef = useRef<{ clientX: number; clientY: number; initialX: number; initialY: number; elWidth: number; elHeight: number }>({
+    clientX: 0,
+    clientY: 0,
+    initialX: 0,
+    initialY: 0,
+    elWidth: 0,
+    elHeight: 0,
+  });
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const startDrag = useCallback((clientX: number, clientY: number, target: HTMLElement) => {
+    if (target.closest('button, input, textarea, a')) return;
+    const el = containerRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    dragStartRef.current = {
+      clientX,
+      clientY,
+      initialX: rect.left,
+      initialY: rect.top,
+      elWidth: rect.width,
+      elHeight: rect.height,
+    };
+    isDraggingRef.current = true;
+
+    const onMove = (e: MouseEvent | TouchEvent) => {
+      if (!isDraggingRef.current) return;
+      const curX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+      const curY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+      const dx = curX - dragStartRef.current.clientX;
+      const dy = curY - dragStartRef.current.clientY;
+
+      const maxX = Math.max(10, window.innerWidth - dragStartRef.current.elWidth - 10);
+      const maxY = Math.max(10, window.innerHeight - dragStartRef.current.elHeight - 10);
+
+      const nextX = Math.min(Math.max(10, dragStartRef.current.initialX + dx), maxX);
+      const nextY = Math.min(Math.max(10, dragStartRef.current.initialY + dy), maxY);
+
+      setPosition({ x: nextX, y: nextY });
+    };
+
+    const onEnd = () => {
+      isDraggingRef.current = false;
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onEnd);
+      window.removeEventListener('touchmove', onMove);
+      window.removeEventListener('touchend', onEnd);
+    };
+
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onEnd);
+    window.addEventListener('touchmove', onMove);
+    window.addEventListener('touchend', onEnd);
+  }, []);
+
+  const handleHeaderMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
+    startDrag(e.clientX, e.clientY, e.target as HTMLElement);
+  };
+
+  const handleHeaderTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
+    if (e.touches.length > 0) {
+      startDrag(e.touches[0].clientX, e.touches[0].clientY, e.target as HTMLElement);
+    }
+  };
 
   // Auto-scroll inside chat messages container
   const scrollToBottom = useCallback(() => {
@@ -548,28 +624,245 @@ export default function FinancialChatbot() {
       hour12: true,
     });
 
-  return (
-    <div className="finflux-chatbot">
-      {/* Header */}
-      <div className="chatbot-header">
-        <div className="chatbot-header-left">
-          <div className="chatbot-header-icon overflow-hidden p-0 bg-transparent">
-            <img src={botLogo} alt="FinFlux AI" className="w-full h-full object-cover rounded-lg" />
+  const handleClearChat = () => {
+    setMessages([]);
+    if (currentAudioRef.current) {
+      currentAudioRef.current.pause();
+      currentAudioRef.current = null;
+    }
+    setPlayingMessageId(null);
+  };
+
+  const handleCompactSubmit = () => {
+    if (!input.trim() || isLoading || isRecording) return;
+    sendMessage(input);
+    onModeChange?.('popup');
+  };
+
+  // If in compact mode, render the sleek bottom-right floating mini-dock (inspired by reference image)
+  if (mode === 'compact') {
+    return (
+      <div
+        ref={containerRef}
+        className="chatbot-compact-container"
+        style={position ? { left: `${position.x}px`, top: `${position.y}px`, right: 'auto', bottom: 'auto' } : undefined}
+      >
+        <div className="chatbot-compact-card">
+          {/* Top Dark Banner Bar */}
+          <div
+            className="chatbot-compact-header cursor-grab active:cursor-grabbing select-none"
+            onMouseDown={handleHeaderMouseDown}
+            onTouchStart={handleHeaderTouchStart}
+            onDoubleClick={() => setPosition(null)}
+            title="Drag to move (Double-click to reset position)"
+          >
+            <div className="flex items-center gap-2 pointer-events-none">
+              <div className="w-5 h-5 rounded-md overflow-hidden bg-transparent shrink-0">
+                <img src={botLogo} alt="FinFlux AI" className="w-full h-full object-cover" />
+              </div>
+              <span className="text-xs font-semibold text-white tracking-wide">FinFlux AI</span>
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+            </div>
+
+            <div className="flex items-center gap-2">
+              {/* Expand to full popup */}
+              <button
+                type="button"
+                onClick={() => onModeChange?.('popup')}
+                className="chatbot-compact-icon-btn"
+                title="Expand chat window"
+                aria-label="Expand chat window"
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="18 15 12 9 6 15" />
+                </svg>
+              </button>
+
+              {/* Clear chat */}
+              <button
+                type="button"
+                onClick={handleClearChat}
+                className="chatbot-compact-icon-btn"
+                title="Clear conversation"
+                aria-label="Clear conversation"
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67" />
+                </svg>
+              </button>
+
+              {/* Minimize to avatar bubble */}
+              <button
+                type="button"
+                onClick={() => onModeChange?.('bubble')}
+                className="chatbot-compact-icon-btn"
+                title="Minimize to avatar"
+                aria-label="Minimize to avatar"
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                  <line x1="5" y1="12" x2="19" y2="12" />
+                </svg>
+              </button>
+            </div>
           </div>
-          <div>
-            <h2 className="chatbot-title">FinFlux AI</h2>
-            <p className="chatbot-subtitle">Personal financial analyst</p>
+
+          {/* Bottom Prompt Input Row */}
+          <div className="chatbot-compact-body">
+            <input
+              type="text"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  handleCompactSubmit();
+                }
+              }}
+              placeholder="Ask FinFlux AI…"
+              className="chatbot-compact-input"
+              disabled={isLoading || isRecording}
+            />
+
+            <div className="flex items-center gap-1">
+              {/* Mic STT button */}
+              <button
+                type="button"
+                onClick={isRecording ? stopRecording : startRecording}
+                className={`w-7 h-7 rounded-md flex items-center justify-center transition-colors ${
+                  isRecording ? 'bg-red-500 text-white animate-pulse' : 'text-gray-400 hover:text-indigo-600 hover:bg-gray-100'
+                }`}
+                title={isRecording ? 'Stop recording' : 'Speak to AI'}
+              >
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
+                  <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+                  <line x1="12" y1="19" x2="12" y2="23" />
+                  <line x1="8" y1="23" x2="16" y2="23" />
+                </svg>
+              </button>
+
+              {/* Send button */}
+              <button
+                type="button"
+                onClick={handleCompactSubmit}
+                disabled={!input.trim() || isLoading}
+                className="chatbot-compact-send-btn"
+                title="Send and open chat"
+              >
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="m5 12 14-7-4 7 4 7z" />
+                  <path d="M5 12h14" />
+                </svg>
+              </button>
+            </div>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <div className="chatbot-header-badge">
-            <span className="chatbot-status-dot" />
-            <span className="chatbot-status-text">
-              {isLoading ? 'Thinking…' : 'Online'}
-            </span>
-          </div>
-        </div>
+
+        {/* Floating Glowing Robot Avatar beside compact card */}
+        <button
+          type="button"
+          onClick={() => onModeChange?.('popup')}
+          className="chatbot-compact-robot-avatar"
+          title="Open FinFlux AI Chatbot"
+          aria-label="Open FinFlux AI Chatbot"
+        >
+          <img src={botLogo} alt="AI" className="w-full h-full object-cover rounded-full" />
+          <span className="chatbot-robot-ring" />
+        </button>
       </div>
+    );
+  }
+
+  return (
+    <div
+      ref={containerRef}
+      className="chatbot-float-popup"
+      style={position ? { left: `${position.x}px`, top: `${position.y}px`, right: 'auto', bottom: 'auto' } : undefined}
+    >
+      <div className="finflux-chatbot">
+        {/* Header */}
+        <div
+          className="chatbot-header cursor-grab active:cursor-grabbing select-none"
+          onMouseDown={handleHeaderMouseDown}
+          onTouchStart={handleHeaderTouchStart}
+          onDoubleClick={() => setPosition(null)}
+          title="Drag to move (Double-click to reset position)"
+        >
+          <div className="chatbot-header-left pointer-events-none">
+            <div className="chatbot-header-icon overflow-hidden p-0 bg-transparent">
+              <img src={botLogo} alt="FinFlux AI" className="w-full h-full object-cover rounded-lg" />
+            </div>
+            <div>
+              <h2 className="chatbot-title">FinFlux AI</h2>
+              <p className="chatbot-subtitle">Personal financial analyst</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <div className="chatbot-header-badge mr-1 pointer-events-none">
+              <span className="chatbot-status-dot" />
+              <span className="chatbot-status-text">
+                {isLoading ? 'Thinking…' : 'Online'}
+              </span>
+            </div>
+
+            {onModeChange && (
+              <div className="chatbot-header-actions flex items-center gap-1">
+                {/* Collapse to compact bar */}
+                <button
+                  type="button"
+                  onClick={() => onModeChange('compact')}
+                  className="chatbot-control-btn"
+                  title="Collapse to compact bar"
+                  aria-label="Collapse to compact bar"
+                >
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="6 9 12 15 18 9" />
+                  </svg>
+                </button>
+
+                {/* Clear chat */}
+                <button
+                  type="button"
+                  onClick={handleClearChat}
+                  className="chatbot-control-btn hover:text-indigo-600 hover:bg-indigo-50"
+                  title="Clear conversation"
+                  aria-label="Clear conversation"
+                >
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67" />
+                  </svg>
+                </button>
+
+                {/* Minimize to avatar bubble */}
+                <button
+                  type="button"
+                  onClick={() => onModeChange('bubble')}
+                  className="chatbot-control-btn"
+                  title="Minimize to avatar bubble"
+                  aria-label="Minimize to avatar bubble"
+                >
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                    <line x1="5" y1="12" x2="19" y2="12" />
+                  </svg>
+                </button>
+
+                {/* Close button */}
+                <button
+                  type="button"
+                  onClick={() => onModeChange('compact')}
+                  className="chatbot-control-btn hover:text-red-500 hover:bg-red-50"
+                  title="Close to compact bar"
+                  aria-label="Close to compact bar"
+                >
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <line x1="18" y1="6" x2="6" y2="18" />
+                    <line x1="6" y1="6" x2="18" y2="18" />
+                  </svg>
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
 
       {/* Messages */}
       <div className="chatbot-messages" ref={messagesContainerRef}>
@@ -693,5 +986,6 @@ export default function FinancialChatbot() {
         </p>
       </div>
     </div>
+  </div>
   );
 }

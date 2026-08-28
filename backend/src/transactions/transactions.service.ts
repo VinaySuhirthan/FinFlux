@@ -73,8 +73,14 @@ export class TransactionsService {
     }
     if (filters.dateFrom || filters.dateTo) {
       where.txnDate = {};
-      if (filters.dateFrom) where.txnDate.gte = new Date(filters.dateFrom);
-      if (filters.dateTo) where.txnDate.lte = new Date(filters.dateTo);
+      if (filters.dateFrom) {
+        const dFrom = filters.dateFrom.includes('T') ? new Date(filters.dateFrom) : new Date(`${filters.dateFrom}T00:00:00.000Z`);
+        if (!isNaN(dFrom.getTime())) where.txnDate.gte = dFrom;
+      }
+      if (filters.dateTo) {
+        const dTo = filters.dateTo.includes('T') ? new Date(filters.dateTo) : new Date(`${filters.dateTo}T23:59:59.999Z`);
+        if (!isNaN(dTo.getTime())) where.txnDate.lte = dTo;
+      }
     }
     if (filters.minAmount || filters.maxAmount) {
       where.amountSigned = {};

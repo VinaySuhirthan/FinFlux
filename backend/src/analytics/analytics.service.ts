@@ -11,10 +11,16 @@ export class AnalyticsService {
 
     const filter: any = {};
 
-    if (dateFrom) filter.gte = new Date(dateFrom);
-    if (dateTo) filter.lte = new Date(dateTo);
+    if (dateFrom) {
+      const dFrom = dateFrom.includes('T') ? new Date(dateFrom) : new Date(`${dateFrom}T00:00:00.000Z`);
+      if (!isNaN(dFrom.getTime())) filter.gte = dFrom;
+    }
+    if (dateTo) {
+      const dTo = dateTo.includes('T') ? new Date(dateTo) : new Date(`${dateTo}T23:59:59.999Z`);
+      if (!isNaN(dTo.getTime())) filter.lte = dTo;
+    }
 
-    return filter;
+    return Object.keys(filter).length > 0 ? filter : undefined;
   }
 
   async getSummary(
@@ -440,54 +446,74 @@ export class AnalyticsService {
 
   async refreshStoredAnalytics(userId: string) {
     const analytics = await this.buildStoredAnalytics(userId);
-    const prisma = this.prisma as any;
 
-    return prisma.analytics.upsert({
-      where: {
-        userId,
-      },
-      update: {
-        userData: analytics.user,
-        income: analytics.income,
-        categories: analytics.categories,
-      },
-      create: {
-        userId,
-        userData: analytics.user,
-        income: analytics.income,
-        categories: analytics.categories,
-      },
-    });
+    // Ensure the Analytics table exists in Postgres
+    await this.prisma.$executeRawUnsafe(`
+      CREATE TABLE IF NOT EXISTS "Analytics" (
+        "id" TEXT NOT NULL DEFAULT md5(random()::text || clock_timestamp()::text),
+        "userId" TEXT NOT NULL UNIQUE,
+        "userData" JSONB,
+        "income" JSONB,
+        "categories" JSONB,
+        "IncomeVolatility" NUMERIC,
+        "IncomeReliability" NUMERIC,
+        "Downside" NUMERIC,
+        "averageIncome" NUMERIC,
+        "PredictedIncome" NUMERIC,
+        "amountSaved" NUMERIC,
+        "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        CONSTRAINT "Analytics_pkey" PRIMARY KEY ("id")
+      );
+    `);
+
+    const userDataStr = JSON.stringify(analytics.user);
+    const incomeStr = JSON.stringify(analytics.income);
+    const categoriesStr = JSON.stringify(analytics.categories);
+
+    await this.prisma.$executeRaw`
+      INSERT INTO "Analytics" ("id", "userId", "userData", "income", "categories", "updatedAt")
+      VALUES (md5(random()::text || clock_timestamp()::text), ${userId}, ${userDataStr}::jsonb, ${incomeStr}::jsonb, ${categoriesStr}::jsonb, NOW())
+      ON CONFLICT ("userId") DO UPDATE SET
+        "userData" = ${userDataStr}::jsonb,
+        "income" = ${incomeStr}::jsonb,
+        "categories" = ${categoriesStr}::jsonb,
+        "updatedAt" = NOW();
+    `;
+
+    return this.getStoredAnalytics(userId);
   }
 
   async getStoredAnalytics(userId: string) {
-    const prisma = this.prisma as any;
+    try {
+      const rows: any[] = await this.prisma.$queryRaw`
+        SELECT a.*, a."IncomeVolatility"
+        FROM "Analytics" a
+        WHERE a."userId" = ${userId}
+        LIMIT 1
+      `;
 
-    const rows = await prisma.$queryRaw`
-      SELECT a.*, a."IncomeVolatility"
-      FROM "Analytics" a
-      WHERE a."userId" = ${userId}
-      LIMIT 1
-    `;
+      const analytics = rows[0];
+      if (!analytics) return null;
 
-    const analytics = rows[0];
-    if (!analytics) return null;
+      const incomeData = typeof analytics.income === 'string'
+        ? JSON.parse(analytics.income)
+        : analytics.income ?? {};
+      const monthlyIncome = Object.values(incomeData)
+        .filter((entry: any) => entry && typeof entry === 'object')
+        .map((entry: any) => Number((entry as any).income ?? 0));
+      const averageIncome = monthlyIncome.length
+        ? monthlyIncome.reduce((total, income) => total + income, 0) / monthlyIncome.length
+        : 0;
+      const predictedIncome = Number(analytics.PredictedIncome ?? 0);
 
-    const incomeData = typeof analytics.income === 'string'
-      ? JSON.parse(analytics.income)
-      : analytics.income ?? {};
-    const monthlyIncome = Object.values(incomeData)
-      .filter((entry: any) => entry && typeof entry === 'object')
-      .map((entry: any) => Number(entry.income ?? 0));
-    const averageIncome = monthlyIncome.length
-      ? monthlyIncome.reduce((total, income) => total + income, 0) / monthlyIncome.length
-      : 0;
-    const predictedIncome = Number(analytics.PredictedIncome ?? 0);
-
-    return {
-      ...analytics,
-      averageIncome: Number(averageIncome.toFixed(2)),
-      amountSaved: Number((predictedIncome - averageIncome).toFixed(2)),
-    };
+      return {
+        ...analytics,
+        averageIncome: Number(averageIncome.toFixed(2)),
+        amountSaved: Number((predictedIncome - averageIncome).toFixed(2)),
+      };
+    } catch {
+      return null;
+    }
   }
 }

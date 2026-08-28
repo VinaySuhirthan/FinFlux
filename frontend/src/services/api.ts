@@ -126,4 +126,24 @@ export const classificationApi = {
     api.post(`/classification/reprocess/${statementId}`).then((r) => r.data),
 };
 
+// Chatbot
+export const chatbotApi = {
+  chat: (messages: { role: string; content: string }[]) =>
+    api.post('/chatbot/chat', { messages }).then((r) => r.data),
+  insights: () =>
+    api.get('/chatbot/insights').then((r) => r.data),
+  tts: (text: string, voiceId?: string) =>
+    api.post('/chatbot/tts', { text, voiceId }, { responseType: 'blob' }).then((r) => r.data),
+  stt: (audioBlob: Blob) => {
+    const form = new FormData();
+    form.append('file', audioBlob, 'voice.webm');
+    return api
+      .post('/chatbot/stt', form, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      })
+      .then((r) => r.data);
+  },
+};
+
 export default api;
+

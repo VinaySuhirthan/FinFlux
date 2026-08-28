@@ -8,8 +8,8 @@ import { ParserModule } from './parser/parser.module';
 import { ClassificationModule } from './classification/classification.module';
 import { RulesModule } from './rules/rules.module';
 import { AnalyticsModule } from './analytics/analytics.module';
-import { FinancialFeaturesModule } from './financial-features/financial-features.module';
 import { PrismaModule } from './prisma/prisma.module';
+import { ChatbotModule } from './chatbot/chatbot.module';
 
 @Module({
   imports: [
@@ -22,7 +22,7 @@ import { PrismaModule } from './prisma/prisma.module';
     ClassificationModule,
     RulesModule,
     AnalyticsModule,
-    FinancialFeaturesModule,
+    ChatbotModule,
   ],
 })
 export class AppModule {}

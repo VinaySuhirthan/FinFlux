@@ -1,79 +1,102 @@
-# finflux
+# FinFlux — Personal Finance Tracker
 
-Upload a bank statement PDF, get every transaction auto-categorized — no LLM calls, just a rules engine and bank-specific parsers doing real work.
+> *"No LLM calls. No black boxes. Just rules, parsers, and real work."*
 
-## What it does
+**FinFlux** is a full-stack personal finance tracker that auto-categorizes every transaction from your bank statement PDF — no AI APIs, no subscriptions, just a deterministic rule engine and bank-specific parsers doing the heavy lifting.
 
-A full-stack personal finance tracker: users upload bank statement PDFs (HDFC, SBI, or generic formats), the backend parses raw statement text into structured transactions, and a rule-based classification engine auto-categorizes each one against ~70 seeded rules plus any custom rules the user defines. Users can override any category manually, browse statements and transactions, and view spending analytics — category breakdown, monthly trend, and top merchants — on a dashboard.
+---
+
+## Why I did this?
+
+Managing personal finances in India means juggling statements from HDFC, SBI, and a dozen other banks — each with its own export format, column layout, and quirks. Every existing tool either calls a paid LLM API, requires manual CSV entry, or simply gives up on Indian bank formats. I built FinFlux to solve that: upload any bank statement PDF and get every transaction auto-categorized instantly, with full control over the rules and zero dependency on external AI services.
+
+---
+
+## How did it solve?
+
+FinFlux uses a **Strategy Pattern** to handle the chaos of bank-specific PDF formats. A `ParserService` tries each bank parser in order — HDFC → SBI → Generic fallback — where each self-selects via a `canHandle()` check. Once parsed, a **rule-based classification engine** matches each transaction description against ~70 pre-seeded rules (keyword or regex) to assign categories. Users can override any category manually, and those overrides are flagged with `isManualOverride` so they survive future re-processing. The result: structured, categorized transaction data powering a live spending dashboard.
+
+---
+
+## Key Features
+
+### 1. PDF Statement Parsing
+Upload bank statement PDFs from **HDFC**, **SBI**, or any generic format. The backend automatically detects the bank and applies the correct parser to extract clean, structured transaction data — handling multi-line narrations, DR/CR suffixes, comma-formatted amounts, and page-break misalignment.
+
+### 2. Automatic Transaction Categorization
+Powered by a **pure rule-based classification engine** (no LLMs), each transaction description is matched against ~70 pre-seeded rules across categories like Food, Travel, Utilities, Shopping, and more. Rules support both keyword matching and full regex patterns with configurable priority.
+
+### 3. Custom Rule Management
+Build your own categorization rules on top of the system defaults. Create, edit, and delete custom rules from the UI. Your rules are applied first (higher priority), giving you full control over how your spending is classified.
+
+### 4. Spending Analytics Dashboard
+Visualize your finances with three live charts:
+- **Category Breakdown** — Pie chart of spend by category
+- **Monthly Trend** — Bar chart of income vs. expense over time
+- **Top Merchants** — Ranked list of your highest-spend merchants
+
+### 5. Manual Override with Persistence
+Override any auto-assigned category inline from the Transactions table. Overrides are flagged with `isManualOverride = true`, so they are never silently reverted if a statement is reprocessed later.
+
+### 6. Clean, Responsive UI
+Built with **React 18 + TypeScript + Tailwind CSS** on a Vite frontend. Features a drag-and-drop PDF upload, paginated transaction tables with inline editing, and a dashboard that updates on every upload.
+
+---
 
 ## Tech Stack
 
-![React](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=white)
-![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white)
-![NestJS](https://img.shields.io/badge/NestJS-E0234E?logo=nestjs&logoColor=white)
-![Prisma](https://img.shields.io/badge/Prisma-2D3748?logo=prisma&logoColor=white)
-![PostgreSQL](https://img.shields.io/badge/PostgreSQL-4169E1?logo=postgresql&logoColor=white)
-![Docker](https://img.shields.io/badge/Docker-2496ED?logo=docker&logoColor=white)
-![Tailwind](https://img.shields.io/badge/Tailwind_CSS-06B6D4?logo=tailwindcss&logoColor=white)
+| Category | Technology |
+|---|---|
+| Frontend | React 18, TypeScript, Tailwind CSS, Vite |
+| Backend | NestJS (Node.js), TypeScript |
+| Database | PostgreSQL + Prisma ORM |
+| Auth | JWT (passport-jwt + bcryptjs) |
+| PDF Parsing | pdf-parse |
+| Classification | Pure rule-based engine (no LLMs) |
+| Infrastructure | Docker, Docker Compose |
 
-**Auth:** JWT (bcryptjs + passport-jwt) · **PDF parsing:** pdf-parse · **Classification:** pure rule-based, no LLMs
+---
 
-## Architecture / How it works
+## Getting Started
 
-```
-kitna-kharcha/
-├── backend/src/
-│   ├── auth/            # JWT register/login
-│   ├── statements/      # PDF upload + async processing
-│   ├── parser/
-│   │   ├── interfaces/         # shared BankParser interface
-│   │   └── strategies/
-│   │       ├── hdfc.strategy.ts     # HDFC-specific parser
-│   │       ├── sbi.strategy.ts      # SBI-specific parser
-│   │       └── generic.strategy.ts  # heuristic fallback
-│   ├── classification/  # rule-matching engine
-│   ├── rules/            # user-managed rule CRUD
-│   └── analytics/        # dashboard aggregations
-└── frontend/src/pages/
-    ├── Login / Register
-    ├── Upload             # drag-and-drop PDF upload
-    ├── Statements / Transactions
-    ├── Dashboard           # category pie, monthly bar, top merchants
-    └── Rules               # custom rule management
+### Prerequisites
+- Node.js 18+
+- Docker & Docker Compose
+- PostgreSQL (or use the Docker setup below)
+
+### Installation
+
+**1. Clone the repository:**
+```bash
+git clone https://github.com/VinaySuhirthan/FinFlux.git
+cd FinFlux
 ```
 
-**Data flow:** PDF upload → `ParserService` picks the right strategy (HDFC → SBI → Generic fallback, each self-selects via `canHandle()`) → `ClassificationService` matches each transaction description against prioritized rules (keyword or regex) → saved with category + reason → dashboard aggregates on read. Manual category overrides are flagged and survive re-classification.
-
-```typescript
-interface BankParser {
-  name: string;
-  canHandle(text: string): boolean;
-  parse(text: string): ParseResult;
-}
-```
-
-## Setup & Run
-
-**Docker (fastest — full stack):**
+**2. Docker (fastest — full stack in one command):**
 ```bash
 docker-compose up --build
 # frontend: http://localhost:5173
 # backend:  http://localhost:3001
 
-docker exec -it kitna_kharcha_backend npx prisma migrate deploy
-docker exec -it kitna_kharcha_backend npx ts-node prisma/seed.ts
 ```
 
-**Manual setup:**
+**3. Manual setup:**
+
+Configure environment — create a `.env` file in `/backend`:
+```env
+DATABASE_URL=postgresql://postgres:password@localhost:5432/finflux
+JWT_SECRET=your_jwt_secret
+PORT=3001
+```
+
 ```bash
-# Postgres
-docker run -d --name kitna_kharcha \
-  -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=password -e POSTGRES_DB=kitna_kharcha \
+# Start Postgres
+docker run -d --name finflux_db \
+  -e POSTGRES_USER=postgres -e POSTGRES_PASSWORD=password -e POSTGRES_DB=finflux \
   -p 5432:5432 postgres:15-alpine
 
 # Backend
 cd backend
-cp .env.example .env
 npm install
 npx prisma migrate dev --name init
 npx prisma generate
@@ -86,18 +109,34 @@ npm install
 npm run dev                # http://localhost:5173
 ```
 
-## Screenshots / Demo
+---
 
-**[Add a screenshot of the Dashboard — category pie + monthly trend chart]**
-**[Add a screenshot of the Transactions table with inline category editing]**
-**[Add a GIF of uploading a PDF → seeing it auto-categorized]**
+## Project Structure
 
-## What I learned / Key challenges
-
-- **Strategy pattern for parsers that don't share a format.** HDFC and SBI statements have completely different column layouts and headers — hardcoding either would break on the other. Each parser self-declares whether it can handle a given statement via `canHandle()`, tried in order with a generic heuristic parser as the final fallback, so adding a new bank later means writing one new file, not touching existing ones.
-- **Designing classification to be overridable, not just automatic.** Auto-categorization is only useful if wrong guesses are easy to fix and stay fixed — `isManualOverride` flags on transactions mean a user's manual correction survives if the statement gets reprocessed later, rather than getting silently reverted.
-- **Money as `Decimal`, not `float`.** Amount fields use Prisma's `Decimal(15,2)` rather than floating point, since financial arithmetic on floats silently accumulates rounding errors — a mistake that's invisible until totals stop matching.
-- **Real bank statements are inconsistent.** Multi-line narrations, comma-formatted amounts, DR/CR suffixes, and page-break column misalignment in multi-page PDFs all needed explicit handling — see [Assumptions & Limitations](#assumptions--limitations) below for what's still not bulletproof.
+```
+FinFlux/
+├── backend/src/
+│   ├── auth/                    # JWT register/login
+│   ├── statements/              # PDF upload + async processing
+│   ├── parser/
+│   │   ├── interfaces/          # Shared BankParser interface
+│   │   └── strategies/
+│   │       ├── hdfc.strategy.ts      # HDFC-specific parser
+│   │       ├── sbi.strategy.ts       # SBI-specific parser
+│   │       └── generic.strategy.ts   # Heuristic fallback
+│   ├── classification/          # Rule-matching engine
+│   ├── rules/                   # User-managed rule CRUD
+│   └── analytics/               # Dashboard aggregations
+├── frontend/src/pages/
+│   ├── Login / Register
+│   ├── Upload                   # Drag-and-drop PDF upload
+│   ├── Statements / Transactions
+│   ├── Dashboard                # Category pie, monthly bar, top merchants
+│   └── Rules                    # Custom rule management
+├── finflux.sql                  # Database dump
+├── docs/                        # Additional documentation
+└── scripts/                     # Utility scripts
+```
 
 ---
 
@@ -126,12 +165,40 @@ npm run dev                # http://localhost:5173
 | DELETE | /rules/:id | Delete user rule |
 | POST | /classification/reprocess/:id | Re-classify statement |
 
-All endpoints except auth require `Authorization: Bearer <token>`.
+> All endpoints except `/auth/*` require `Authorization: Bearer <token>`.
+
+---
+
+## Performance & Design Decisions
+
+- **`Decimal(15,2)` not `float`** — All amount fields use Prisma's Decimal type. Financial arithmetic on floats accumulates silent rounding errors; this prevents totals from drifting.
+- **Strategy Pattern for parsers** — HDFC and SBI have completely different column layouts. Each parser self-declares via `canHandle()`, tried in sequence with a generic heuristic as the final fallback. Adding a new bank = one new file, zero changes to existing code.
+- **`isManualOverride` flag** — Auto-categorization is only useful if wrong guesses are fixable and *stay* fixed. This flag ensures user corrections survive re-processing.
+- **Rule priority system** — User-defined rules run before system rules, giving users full control without modifying seeded data.
+
+---
+
+## Adding a New Bank Parser
+
+1. Create `backend/src/parser/strategies/mybank.strategy.ts` implementing `BankParser`
+2. Register it in the parsers array in `parser.service.ts` (before `GenericParser`)
+3. Implement `canHandle()` to detect bank-specific text markers
+4. Implement `parse()` to extract `ParsedTransaction[]`
+
+```typescript
+interface BankParser {
+  name: string;
+  canHandle(text: string): boolean;
+  parse(text: string): ParseResult;
+}
+```
+
+---
 
 ## Assumptions & Limitations
 
 **PDF Parsing**
-- Text-based PDFs only — scanned/image PDFs won't parse. Use "Save as PDF" from net banking, not a photo/scan.
+- Text-based PDFs only — scanned/image PDFs won't parse. Use "Save as PDF" from net banking, not a photo or scan.
 - HDFC parser targets HDFC Net Banking's tab/multi-space column format; multi-line narrations may be partially captured.
 - SBI parser targets SBI's text export format; alignment variations may cause field misassignment.
 - Generic fallback is heuristic-based — works for simple layouts, may misattribute debit/credit in ambiguous ones.
@@ -145,15 +212,10 @@ All endpoints except auth require `Authorization: Bearer <token>`.
 **Scope**
 - Single user per session, no multi-tenant sharing.
 - Uploads stored on local disk (`./uploads/`) — architecture is S3-ready by swapping the multer storage adapter in `StatementsController`.
-- Parsing runs in-process after upload (no job queue yet — see below).
+- Parsing runs in-process after upload (no job queue yet).
 - No email verification or password reset flow.
 
-## Adding a New Bank Parser
-
-1. Create `backend/src/parser/strategies/mybank.strategy.ts` implementing `BankParser`
-2. Register it in the parsers array in `parser.service.ts` (before `GenericParser`)
-3. Implement `canHandle()` to detect bank-specific text markers
-4. Implement `parse()` to extract `ParsedTransaction[]`
+---
 
 ## Future Improvements
 
@@ -165,3 +227,17 @@ All endpoints except auth require `Authorization: Bearer <token>`.
 - [ ] Recurring transaction detection
 - [ ] Credit card statement support (separate billing cycle handling)
 - [ ] Multi-currency support
+- [ ] More bank parsers (Axis, ICICI, Kotak)
+
+---
+
+## SNAPS:
+
+
+<img width="1600" height="778" alt="image" src="https://github.com/user-attachments/assets/6b0518dc-492c-418d-9333-cf78b1db85d7" />
+
+
+Team HacksON
+Created for the CSI ORIGIN(VIT)
+
+Lead Developer: Vinay Suhirthan

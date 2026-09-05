@@ -1,4 +1,4 @@
-# FinFlux — Finance Analytics Platform for Variable Income Users
+# RAG - FinFlux — Finance Analytics Platform for Variable Income Users
 
 > *"Upload your statement. Ask anything. Get answers grounded in your actual data."*
 
